@@ -1,6 +1,7 @@
 ---
 name: git-to-svn-transfer
 description: Prepare changes from a Git repository for a manual, group-by-group transfer into Subversion (SVN). Splits a Git range or a first import into functional groups, builds a temporary branch with one cumulative commit and one real Git worktree per group, runs the project's build, test and smoke checks on every cumulative worktree, exports a delta package and commit message per group, writes a step-by-step SVN guide, re-checks each group inside the SVN working copy before the user commits, verifies the result, resumes interrupted runs and cleans up. Never runs svn commit or git push. Use when the user wants to move, sync, port or mirror Git commits into SVN, commit Git work to SVN by hand in several functional commits, or continue, verify or clean up such a transfer.
+license: MIT
 compatibility: Requires Python 3.8+, the git CLI and an svn CLI client. Tested on WSL2 Ubuntu 22.04 with Python 3.10, Git 2.34 and the TortoiseSVN command-line client 1.14 (svn.exe driven from WSL). Other platforms are untested.
 metadata:
   version: "1.1.0"

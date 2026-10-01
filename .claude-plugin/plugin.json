@@ -1,0 +1,13 @@
+{
+  "name": "git-to-svn-transfer",
+  "description": "Prepare Git changes for a manual, group-by-group transfer into Subversion: functional groups, one checked worktree per group, delta packages, an SVN guide and verification. Never runs svn commit or git push.",
+  "version": "1.1.0",
+  "author": {
+    "name": "quanap5",
+    "url": "https://github.com/quanap5"
+  },
+  "homepage": "https://github.com/quanap5/git-to-svn-transfer",
+  "repository": "https://github.com/quanap5/git-to-svn-transfer",
+  "license": "MIT",
+  "keywords": ["git", "svn", "subversion", "migration", "version-control"]
+}

@@ -2,8 +2,26 @@
 
 ## Install
 
-The skill is one self-contained directory. Copy or symlink it; nothing is built
-and nothing is installed with pip.
+Nothing is built and nothing is installed with pip.
+
+### As a Claude Code plugin
+
+The repository is a plugin and its own marketplace. In Claude Code:
+
+```text
+/plugin marketplace add quanap5/git-to-svn-transfer
+/plugin install git-to-svn-transfer@git-to-svn-transfer
+```
+
+The install scope (user, project or local) is chosen at install time. The skill
+is then invoked as `/git-to-svn-transfer:git-to-svn-transfer`. To try a local
+clone without installing it, start Claude Code with
+`claude --plugin-dir /path/to/clone`.
+
+### As a plain skill directory
+
+The skill is the self-contained directory `skills/git-to-svn-transfer/` of the
+repository. Copy or symlink that directory, keeping its name:
 
 | Scope | Location | Use when |
 |---|---|---|
@@ -11,11 +29,13 @@ and nothing is installed with pip.
 | Project | `<repo>/.claude/skills/git-to-svn-transfer/` | The team should get the skill with the repository. Commit it. |
 
 Agents that follow the Agent Skills layout but use another directory (for
-example `.agents/skills/`) take the same folder unchanged. The scripts also run
-with no agent at all:
+example `.agents/skills/`) take the same folder unchanged. Installed this way
+the skill is invoked as `/git-to-svn-transfer`.
+
+### Without an agent
 
 ```bash
-python3 /path/to/git-to-svn-transfer/scripts/git_to_svn.py --help
+python3 /path/to/skills/git-to-svn-transfer/scripts/git_to_svn.py --help
 ```
 
 ## Requirements
@@ -48,10 +68,11 @@ Windows can open (not inside the Linux filesystem).
 ## Running the tests
 
 The suite creates throwaway Git repositories and a local SVN repository with
-`svnadmin`. It never contacts a real server.
+`svnadmin`. It never contacts a real server. The tests live in `tests/` at the
+root of the repository, outside the skill directory, so they need a clone.
 
 ```bash
-cd /path/to/git-to-svn-transfer
+cd /path/to/clone
 python3 -m unittest discover -s tests
 ```
 

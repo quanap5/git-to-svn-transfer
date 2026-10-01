@@ -19,7 +19,7 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCRIPTS = os.path.join(HERE, "..", "scripts")
+SCRIPTS = os.path.join(HERE, "..", "skills", "git-to-svn-transfer", "scripts")
 sys.path.insert(0, SCRIPTS)
 
 from g2s import transfer  # noqa: E402

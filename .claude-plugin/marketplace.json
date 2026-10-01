@@ -1,0 +1,18 @@
+{
+  "name": "git-to-svn-transfer",
+  "owner": {
+    "name": "quanap5",
+    "url": "https://github.com/quanap5"
+  },
+  "metadata": {
+    "description": "Marketplace for the git-to-svn-transfer plugin."
+  },
+  "plugins": [
+    {
+      "name": "git-to-svn-transfer",
+      "source": "./",
+      "description": "Prepare Git changes for a manual, group-by-group transfer into Subversion. Never runs svn commit or git push.",
+      "category": "development"
+    }
+  ]
+}

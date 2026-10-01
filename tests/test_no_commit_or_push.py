@@ -2,7 +2,7 @@
 import os
 import unittest
 
-SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
+SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "skills", "git-to-svn-transfer", "scripts")
 
 
 def sources():

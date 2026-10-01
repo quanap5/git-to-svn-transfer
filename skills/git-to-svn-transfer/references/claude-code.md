@@ -6,7 +6,9 @@ running the skill inside it; other agents can skip it.
 
 ## Invocation
 
-- By name: `/git-to-svn-transfer <what to transfer>`.
+- By name: `/git-to-svn-transfer:git-to-svn-transfer <what to transfer>` when
+  installed as a plugin, `/git-to-svn-transfer <what to transfer>` when
+  installed as a plain skill directory.
 - By description: asking to move, sync or port Git changes into SVN.
 
 Claude Code announces the skill's base directory when the skill loads. Call the
