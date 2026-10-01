@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "checks": [
+    {"name": "backend-build", "kind": "build", "command": "dotnet build backend", "requires": ["dotnet"], "from_group": "backend"},
+    {"name": "backend-tests", "kind": "test", "command": "dotnet test backend", "requires": ["dotnet"], "from_group": "backend"},
+    {"name": "schema-valid", "kind": "smoke", "command": "python3 contracts/validate.py", "requires": ["python3"]}
+  ],
+  "groups": [
+    {
+      "key": "contracts",
+      "title": "Shared contracts and schemas",
+      "rationale": "Every later group reads these definitions, so they go first and can be reviewed alone.",
+      "depends_on": [],
+      "paths": ["contracts/"],
+      "message": "feat(contracts): add the shared schema and its generated bindings\n\n- Add the schema definition\n- Add the generated bindings"
+    },
+    {
+      "key": "backend",
+      "title": "Backend service",
+      "rationale": "One buildable project; splitting it by folder would leave SVN revisions that do not compile.",
+      "depends_on": ["contracts"],
+      "paths": ["backend/", "tools/run-backend.sh"],
+      "message": "feat(backend): add the service\n\n- Add the API project\n- Add the run script"
+    },
+    {
+      "key": "docs",
+      "title": "Documentation",
+      "rationale": "Describes the groups above, so it goes last.",
+      "depends_on": ["backend"],
+      "paths": ["docs/", "README.md"],
+      "message": "docs: add the user and developer guides"
+    }
+  ]
+}
