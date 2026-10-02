@@ -113,18 +113,50 @@ lines; `NO_COLOR` is respected.
 
 ### Dashboard
 
-Each run directory holds `dashboard.html`, one self-contained page that is
-rebuilt after every command. Open it in a browser to see:
+Each run directory holds `dashboard.html`, one self-contained page that shows
+where the run stands. It is rebuilt after every command, needs no server and
+loads nothing from the network.
 
-- the groups, with their add, modify, delete and rename counts and their
-  readiness, precommit and SVN revision status;
-- the file tree of each group: only what the group changes, or the whole
-  cumulative worktree with the changes highlighted;
-- check results with links to their logs, and the last verification;
-- a timeline of the commands run on this run, kept in `events.jsonl`.
+**Open it.** `prepare` prints its path as `dashboard` in the JSON result; with
+an agent, ask "where is the dashboard of this run". Open the file in a browser.
+From WSL, for a run on a Windows drive:
 
-It only shows the run; it has no buttons that change anything. Rebuild it with
-`git_to_svn.py report --run <run-dir>`.
+```bash
+explorer.exe "$(wslpath -w <run-dir>/dashboard.html)"
+```
+
+**Keep it current.** The page does not refresh itself. After the next command
+(`verify`, `apply`, `precommit`, `record`, `cleanup`), reload it in the browser.
+
+**Read it.**
+
+| Part of the page | What it shows |
+|---|---|
+| Cards | Number of groups, files added, modified and deleted, renames, groups that are `ready`, groups committed and verified. |
+| Groups table | One row per group: add, modify, delete, rename and manual counts, a bar with their proportions, and the readiness, precommit and SVN revision status. Click a row to see that group below. |
+| Files tab | The group's file tree. By default only the files the group changes; tick "whole worktree" for the full cumulative state (baseline plus groups 01 to NN) with the changes coloured. Type in "Filter by path" and press Enter to narrow it. |
+| Checks tab | Every check run for the group, on its Git worktree and in the SVN working copy, with its status and a link to its log. |
+| Overview and Commit message tabs | Rationale, dependencies, commit, worktree and package paths, and the text to use for `svn commit`. |
+| Last verification | The result of the latest `verify`, check by check. |
+| Timeline | The commands run on this run, newest first, with their time, group and result. It is read from `events.jsonl`, which gets one line per command. |
+| Warnings and items that are not transferred | Warnings, manual items, differences between SVN and Git, SVN-only files and notes. |
+
+**Rebuild it**, for example for a run created by an earlier version or after
+deleting the file. This reads `manifest.json` and changes nothing else:
+
+```bash
+python3 skills/git-to-svn-transfer/scripts/git_to_svn.py report --run <run-dir>
+```
+
+Limits:
+
+- The page only shows the run. It has no buttons that stage, commit or remove
+  anything.
+- The "whole worktree" view needs the source Git repository to be readable when
+  the page is built, and is switched off when the baseline holds more than
+  100,000 files.
+- A run created before version 1.3.0 has an empty timeline until the next
+  command is run on it.
 
 Good to know:
 
@@ -192,6 +224,10 @@ python3 -m unittest discover -s tests
 
 See [install-and-environments.md](skills/git-to-svn-transfer/references/install-and-environments.md)
 for the environment variables a Windows svn client under WSL needs.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
