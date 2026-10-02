@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="landscape" data-ratio="16x9">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>git-to-svn-transfer README banner</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("assets/fonts/Inter-Variable.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+      @font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/JetBrainsMono-Regular.ttf") format("truetype"); font-weight: 400; font-display: block; }
+      @font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/JetBrainsMono-Bold.ttf") format("truetype"); font-weight: 700; font-display: block; }
+      :root { --bg: #10131a; --ink: #e8ecef; --mute: #808891; --surface: #171b24; --border: #2f3540; --accent: #4a74f0; --add: #3ab86e; --del: #ec6040; --merge: #b46ee8; --W: 1920px; --H: 1080px; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: var(--bg); }
+      #root { position: relative; width: var(--W); height: var(--H); overflow: hidden; background: var(--bg); color: var(--ink); font-family: "Inter", sans-serif; }
+      .layer { position: absolute; left: 0; top: 0; width: var(--W); height: var(--H); pointer-events: none; }
+      .abs { position: absolute; }
+      .scene { opacity: 0; visibility: hidden; }
+      .draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+      .mask { position: absolute; overflow: hidden; white-space: nowrap; }
+      .hl { letter-spacing: -0.02em; }
+      .hl .w { display: inline-block; }
+      .mono { font-family: "JetBrains Mono", monospace; font-weight: 700; }
+      .rail { position: absolute; left: 0; top: 0; width: 1920px; height: 8px; }
+      .rl { position: absolute; left: 138px; top: 0; width: 1662px; height: 8px; background: var(--mute); border-radius: 4px; transform-origin: 0 50%; }
+      .pl { position: absolute; left: 138px; top: 0; width: 90px; height: 8px; background: var(--accent); border-radius: 4px; }
+      #od { position: absolute; left: 0; top: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--ink); }
+      .blk { position: absolute; left: 0; top: 0; width: 120px; height: 72px; border: 6px solid var(--accent); background: var(--surface); border-radius: 6px; font: 700 44px/1 "JetBrains Mono", monospace; color: var(--ink); display: flex; align-items: center; justify-content: center; }
+      .blk.s { width: 88px; height: 64px; }
+      .rev { position: absolute; left: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--merge); }
+      .ringp { position: absolute; left: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; border: 5px solid var(--merge); }
+      .cd { position: absolute; left: 0; top: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--ink); }
+      .br { position: absolute; left: 0; top: 0; border: 6px solid var(--accent); border-radius: 6px; height: 104px; }
+      .lab { position: absolute; font: 700 48px/60px "JetBrains Mono", monospace; color: var(--ink); white-space: nowrap; }
+      .chip { position: absolute; height: 64px; padding: 0 20px; border: 3px solid var(--border); background: var(--surface); border-radius: 6px; font: 700 44px/58px "JetBrains Mono", monospace; color: var(--ink); white-space: nowrap; }
+      .chip.big { height: 84px; padding: 0 24px; font-size: 56px; line-height: 78px; }
+      .stk { position: absolute; left: -10px; right: -10px; top: 50%; height: 6px; margin-top: -3px; background: var(--del); transform-origin: 0 50%; }
+      .card { position: absolute; width: 680px; height: 400px; border: 3px solid var(--border); background: var(--surface); border-radius: 6px; }
+      .frow { position: absolute; left: 26px; width: 628px; height: 84px; border: 3px solid var(--border); background: var(--bg); border-radius: 6px; padding-left: 20px; font: 700 44px/78px "JetBrains Mono", monospace; color: var(--ink); white-space: nowrap; }
+      #panel { position: absolute; left: 860px; top: 150px; width: 940px; height: 780px; border: 3px solid var(--border); background: var(--surface); border-radius: 6px; }
+      .head { position: absolute; font: 700 44px/56px "JetBrains Mono", monospace; color: var(--ink); }
+      .ready { position: absolute; width: 160px; height: 64px; border: 3px solid var(--add); border-radius: 6px; color: var(--add); font: 700 44px/58px "JetBrains Mono", monospace; text-align: center; }
+      .cell { position: absolute; width: 56px; height: 56px; }
+      .cell svg { display: block; }
+      .conn { position: absolute; width: 6px; height: 66px; background: var(--mute); transform-origin: 50% 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="17.8" data-width="1920" data-height="1080">
+      <svg id="bg" class="layer" viewBox="0 0 1920 1080" width="1920" height="1080">
+        <defs><pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse"><rect x="30" y="30" width="4" height="4" fill="#171b24" /></pattern></defs>
+        <rect width="1920" height="1080" fill="url(#grid)" />
+      </svg>
+
+      <!-- shared back layer: the continuous rail and the origin dot -->
+      <div id="gb" class="layer">
+        <div id="rail" class="rail"><div class="rl"></div><div class="pl" id="pA"></div><div class="pl" id="pB"></div></div>
+        <div id="rail2" class="rail"><div class="rl"></div><div class="pl" id="pC"></div></div>
+        <div id="od" class="c"></div>
+      </div>
+
+      <div id="stage" class="layer">
+        <section id="sc01" class="scene layer">
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:270px;width:1500px;height:250px"><div class="hl" style="font:800 208px/250px Inter">Git to SVN</div></div>
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:520px;width:1500px;height:84px"><div class="hl sub" style="font:600 68px/84px Inter;letter-spacing:0">One functional group at a time.</div></div>
+        </section>
+
+        <section id="sc02" class="scene layer">
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:150px;width:1500px;height:125px"><div class="hl" style="font:700 104px/125px Inter">Split a Git range</div></div>
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:275px;width:1700px;height:125px"><div class="hl" style="font:700 104px/125px Inter">into functional groups.</div></div>
+          <div class="lab c" id="lab1" style="left:335px;top:790px">group 01</div>
+          <div class="lab c" id="lab2" style="left:910px;top:790px">group 02</div>
+          <div class="lab c" id="lab3" style="left:1585px;top:790px">group 03</div>
+          <div class="chip" id="pill" style="left:120px;top:892px">svn-transfer/&lt;run-id&gt;</div>
+        </section>
+
+        <section id="sc03" class="scene layer">
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:405px;width:740px;height:90px"><div class="hl" style="font:700 76px/90px Inter">Every</div></div>
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:495px;width:740px;height:90px"><div class="hl" style="font:700 76px/90px Inter">cumulative state</div></div>
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:585px;width:740px;height:90px"><div class="hl" style="font:700 76px/90px Inter">is built and tested.</div></div>
+          <div id="panel">
+            <div id="cmd" class="abs mono" style="left:30px;top:28px;font-size:48px;line-height:60px;white-space:nowrap"><span style="color:var(--mute)">$</span> verify --run-checks</div>
+            <div id="caret" class="abs" style="left:30px;top:34px;width:26px;height:48px;background:var(--ink)"></div>
+            <div class="head c" style="left:390px;top:150px">build</div>
+            <div class="head c" style="left:540px;top:150px">test</div>
+            <div class="head c" style="left:690px;top:150px">smoke</div>
+            <div class="abs" style="left:30px;top:365px;width:880px;height:3px;background:var(--border)"></div>
+            <div class="abs" style="left:30px;top:515px;width:880px;height:3px;background:var(--border)"></div>
+            <div class="ready c" style="left:840px;top:290px">ready</div>
+            <div class="ready c" style="left:840px;top:440px">ready</div>
+            <div class="ready c" style="left:840px;top:590px">ready</div>
+            <div id="pp" class="abs c" style="left:840px;top:334px;width:120px;height:6px;background:var(--accent)"></div>
+          </div>
+        </section>
+
+        <section id="sc04" class="scene layer">
+          <div class="mask" data-layout-allow-overflow style="left:120px;top:100px;width:1500px;height:144px"><div class="hl" style="font:700 120px/144px Inter">You commit to SVN.</div></div>
+          <div class="card" id="cardB2" style="left:152px;top:388px"></div>
+          <div class="card" id="cardB1" style="left:136px;top:404px"></div>
+          <div class="card" id="card" style="left:120px;top:420px">
+            <div class="abs mono" style="left:36px;top:30px;font-size:48px;line-height:60px;white-space:nowrap">groups/01/</div>
+            <div class="frow" style="top:130px">message.txt</div>
+            <div class="frow" style="top:240px">SVN_MANUAL_TRANSFER.md</div>
+          </div>
+          <svg id="gate" class="abs" style="left:0;top:0" width="1920" height="1080" viewBox="0 0 1920 1080">
+            <rect x="880" y="590" width="160" height="60" fill="#10131a" />
+            <rect x="880" y="590" width="160" height="60" fill="url(#grid)" />
+          </svg>
+          <div class="abs c post" style="left:880px;top:620px;width:8px;height:84px;background:var(--mute)"></div>
+          <div class="abs c post" style="left:1040px;top:620px;width:8px;height:84px;background:var(--mute)"></div>
+          <div id="you" class="abs c mono" style="left:960px;top:620px;width:120px;height:120px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:44px;line-height:120px;text-align:center">you</div>
+          <div id="ringYou" class="abs c" style="left:960px;top:620px;width:120px;height:120px;border-radius:50%;border:4px solid var(--ink)"></div>
+          <div class="chip" id="st1" style="left:856px;top:728px;color:var(--mute);border-width:4px;padding:0 19px">apply</div>
+          <div class="chip" id="st2" style="left:1058px;top:728px;color:var(--mute);border-width:4px;padding:0 19px">precommit</div>
+          <div class="chip" id="st3" style="left:1366px;top:728px;color:var(--mute);border-width:4px;padding:0 19px">record</div>
+          <div class="lab c" id="rl1" style="left:1200px;top:548px">r101</div>
+          <div class="lab c" id="rl2" style="left:1450px;top:548px">r102</div>
+          <div class="lab c" id="rl3" style="left:1700px;top:548px">r103</div>
+          <div id="stripm" class="abs" data-layout-allow-overflow style="left:0;top:895px;width:1920px;height:110px;overflow:hidden">
+            <div id="strip" class="abs" style="left:0;top:0;width:1920px;height:110px">
+              <div class="abs" style="left:120px;top:0;font:600 64px/110px Inter;white-space:nowrap">The tool never runs</div>
+              <div class="chip big" id="c1" style="left:800px;top:13px;border-width:4px;padding:0 23px">svn commit<i class="stk" id="k1"></i></div>
+              <div class="chip big" id="c2" style="left:1230px;top:13px;border-width:4px;padding:0 23px">git push<i class="stk" id="k2"></i></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="sc05" class="scene layer">
+          <div class="conn" id="cn1" style="left:697px;top:332px"></div>
+          <div class="conn" id="cn2" style="left:957px;top:332px"></div>
+          <div class="conn" id="cn3" style="left:1217px;top:332px"></div>
+          <div class="mask" data-layout-allow-overflow style="left:0;top:522px;width:1920px;height:160px"><div class="hl mono" style="font-size:120px;line-height:160px;text-align:center;letter-spacing:0">git-to-svn-transfer</div></div>
+          <div class="mask" data-layout-allow-overflow style="left:0;top:689px;width:1920px;height:82px"><div class="hl tag" style="font:600 68px/82px Inter;text-align:center;letter-spacing:0">Nothing missing. Nothing repeated.</div></div>
+          <div class="chip" id="inst" style="left:180px;top:850px;width:1560px;height:120px;padding:0 0 0 36px;font-size:44px;line-height:114px">/plugin install git-to-svn-transfer@git-to-svn-transfer</div>
+          <div id="icaret" class="abs" style="left:1680px;top:882px;width:26px;height:56px;background:var(--ink)"></div>
+        </section>
+      </div>
+
+      <!-- shared front layer: group blocks, revision dots and their rings ride above every scene -->
+      <div id="gf" class="layer">
+        <div class="blk c" id="B1"><span class="na">01</span></div>
+        <div class="blk c" id="B2"><span class="na">02</span></div>
+        <div class="blk c" id="B3"><span class="na">03</span></div>
+        <div class="blk s c" id="C21">01</div>
+        <div class="blk s c" id="C31">01</div>
+        <div class="blk s c" id="C32">02</div>
+        <div class="rev c" id="R1"></div>
+        <div class="rev c" id="R2"></div>
+        <div class="rev c" id="R3"></div>
+        <div class="ringp c" id="ringR"></div>
+      </div>
+    </div>
+
+    <script>/*TIMING:BEGIN*/window.TIMING={
+      duration: 17.8, fps: 30, beat0: 0, beatLen: 0.5, kick: [], drops: [], outroBeat: 36,
+      scenes: {
+        "s01-cover": { start: 0, end: 2.4, lines: [
+          { on: 0.25, off: 2.08, words: [["git", 0.25, 0.33], ["to", 0.33, 0.41], ["svn", 0.41, 0.8]] },
+          { on: 0.65, off: 2.08, words: [["one", 0.9, 1.05], ["functional", 1.05, 1.2], ["group", 1.2, 1.45], ["at", 1.45, 1.55], ["a", 1.55, 1.65], ["time", 1.65, 1.95]] }
+        ] },
+        "s02-split": { start: 2.4, end: 5.8, lines: [
+          { on: 2.7, off: 5.35, words: [["split", 2.5, 2.8], ["a", 2.8, 2.9], ["git", 2.9, 3.05], ["range", 3.05, 3.4], ["into", 3.4, 3.6], ["functional", 3.6, 4.0], ["groups", 4.0, 4.5]] }
+        ] },
+        "s03-check": { start: 5.8, end: 9.4, lines: [
+          { on: 5.9, off: 8.95, words: [["every", 5.9, 6.65], ["cumulative", 6.65, 6.85], ["state", 6.85, 6.95], ["is", 6.95, 7.1], ["built", 7.1, 7.25], ["and", 7.25, 7.35], ["tested", 7.35, 7.75]] }
+        ] },
+        "s04-handoff": { start: 9.4, end: 13.8, lines: [
+          { on: 9.52, off: 13.75, words: [["you", 10.3, 10.9], ["commit", 10.9, 11.0], ["to", 11.0, 11.4], ["svn", 11.4, 11.8]] },
+          { on: 11.6, off: 13.75, words: [["the", 11.6, 11.7], ["tool", 11.7, 11.8], ["never", 11.8, 12.0], ["runs", 12.0, 12.15], ["svn", 12.15, 12.2], ["commit", 12.2, 12.25], ["or", 12.25, 12.26], ["git", 12.26, 12.3], ["push", 12.3, 12.6]] }
+        ] },
+        "s05-outro": { start: 13.8, end: 17.8, lines: [
+          { on: 14.05, off: 17.0, words: [["git-to-svn-transfer", 14.1, 14.5]] },
+          { on: 14.5, off: 17.0, words: [["nothing", 14.5, 14.6], ["missing", 14.6, 14.8], ["nothing", 14.8, 15.05], ["repeated", 15.05, 15.5]] }
+        ] }
+      },
+      captions: [], sfx: [], env: []
+    };/*TIMING:END*/</script>
+    <script>
+      (() => {
+        const T = window.TIMING;
+        const tl = gsap.timeline({ paused: true });
+        window.__timelines = window.__timelines || {};
+        window.__timelines["main"] = tl;
+
+        // ---------- lookups ----------
+        const $ = (s, r = document) => r.querySelector(s);
+        const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+        const SC = T.scenes;
+        const hit = (sid, word, nth) => {
+          const h = SC[sid].lines.flatMap((l) => l.words).filter((w) => w[0] === word)[nth - 1];
+          if (!h) console.warn(`[timing] "${word}" #${nth} missing in ${sid}`);
+          return h;
+        };
+        const W = (sid, word, nth = 1) => (hit(sid, word, nth) || [0, SC[sid].start])[1];
+        const S1 = SC["s01-cover"].start, S2 = SC["s02-split"].start, S3 = SC["s03-check"].start, S4 = SC["s04-handoff"].start, S5 = SC["s05-outro"].start;
+        const I1 = "s01-cover", I2 = "s02-split", I3 = "s03-check", I4 = "s04-handoff", I5 = "s05-outro";
+        const FR = 1 / 30;
+        const ACC = "#4a74f0", INK = "#e8ecef", ADD = "#3ab86e", SURF = "#171b24", DEL = "#ec6040", MERGE = "#b46ee8", BORDER = "#2f3540", ACC_LIGHT = "#9db4ff";
+        const NI = { immediateRender: false };
+
+        // ---------- build the DOM before any tween ----------
+        const mk = (parent, cls, css, html = "") => {
+          const d = document.createElement("div");
+          d.className = cls;
+          if (css) d.style.cssText = css;
+          d.innerHTML = html;
+          parent.append(d);
+          return d;
+        };
+        const splitWords = (el) =>
+          Array.from(el.childNodes).forEach((n) => {
+            if (n.nodeType === 1) return n.namespaceURI === "http://www.w3.org/2000/svg" ? undefined : splitWords(n);
+            if (n.nodeType !== 3) return;
+            const frag = document.createDocumentFragment();
+            n.textContent.split(/([ \t\r\n]+)/).forEach((p) => {
+              if (!p) return;
+              if (/^[ \t\r\n]+$/.test(p)) return frag.append(" ");
+              const s = document.createElement("span");
+              s.className = "w";
+              s.textContent = p;
+              frag.append(s);
+            });
+            n.replaceWith(frag);
+          });
+        $$(".hl").forEach(splitWords);
+
+        // commit dots and brackets (scene 2): three clusters of 3, 4 and 2 dots
+        const DX = [200, 330, 470, 700, 820, 960, 1120, 1450, 1720];
+        const CLU = [[0, 1, 2], [3, 4, 5, 6], [7, 8]];
+        const dots = [], brs = [], cls = [], cxs = [];
+        CLU.forEach((ids, k) => {
+          const box = mk($("#sc02"), "layer");
+          const x0 = DX[ids[0]], x1 = DX[ids[ids.length - 1]];
+          cxs.push((x0 + x1) / 2);
+          ids.forEach((i) => { const d = mk(box, "cd"); dots[i] = d; });
+          const br = mk(box, "br", `width:${x1 - x0 + 88}px`);
+          brs.push(br); cls.push(box);
+        });
+
+        // terminal check cells (scene 3): ring plus a green tick per cell
+        const panel = $("#panel");
+        const ROWY = [290, 440, 590], COLX = [390, 540, 690];
+        const rings = [], ticks = [];
+        for (let r = 0; r < 3; r++) {
+          rings[r] = []; ticks[r] = [];
+          for (let c = 0; c < 3; c++) {
+            const cell = mk(panel, "cell c", `left:${COLX[c]}px;top:${ROWY[r]}px`,
+              `<svg viewBox="0 0 56 56" width="56" height="56"><circle class="ring" cx="28" cy="28" r="23" fill="none" stroke="#808891" stroke-width="6"/><path class="tick draw" pathLength="1" d="M14 29 L24 39 L42 17" fill="none" stroke="#3ab86e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+            rings[r][c] = $(".ring", cell);
+            ticks[r][c] = $(".tick", cell);
+          }
+        }
+        const readies = $$("#panel .ready");
+
+        // ---------- initial states (frame 0: background, origin dot, nothing else) ----------
+        gsap.set(".c", { xPercent: -50, yPercent: -50 });
+        gsap.set("#sc01", { autoAlpha: 1 });
+        gsap.set("#rail", { y: 800, yPercent: -50 });
+        gsap.set("#rail .rl", { scaleX: 0 });
+        gsap.set(".pl", { autoAlpha: 0 });
+        gsap.set("#rail2", { y: 420, yPercent: -50 });
+        gsap.set("#rail2 .rl", { scaleX: 0, x: 382 });
+        gsap.set("#od", { x: 138, y: 800 });
+        const B = ["#B1", "#B2", "#B3"].map((s) => $(s));
+        const R = ["#R1", "#R2", "#R3"].map((s) => $(s));
+        gsap.set([...B, ...R, "#C21", "#C31", "#C32", "#ringR"], { autoAlpha: 0 });
+        gsap.set(".na", { autoAlpha: 0 });
+        dots.forEach((d, i) => gsap.set(d, { x: DX[i], y: 640, xPercent: -50, yPercent: -50 }));
+        brs.forEach((b, k) => gsap.set(b, { x: cxs[k], y: 640, xPercent: -50, yPercent: -50, autoAlpha: 0, scaleX: 0 }));
+        gsap.set("#caret", { autoAlpha: 1 });
+        gsap.set(["#pp"], { autoAlpha: 0 });
+        gsap.set("#panel .ready", { autoAlpha: 0 });
+        gsap.set(["#k1", "#k2"], { scaleX: 0 });
+        gsap.set("#ringYou", { autoAlpha: 0 });
+        gsap.set(["#cn1", "#cn2", "#cn3"], { scaleY: 0 });
+        gsap.set("#icaret", { autoAlpha: 0 });
+
+        // ---------- animation vocabulary ----------
+        const pop = (e, t, o = {}) => tl.fromTo(e, { autoAlpha: 0, scale: o.from ?? 0.4 }, { autoAlpha: 1, scale: 1, duration: o.d ?? 0.45, ease: o.ease ?? "back.out(1.4)", stagger: o.stagger ?? 0 }, t);
+        const rise = (e, t, o = {}) => tl.fromTo(e, { autoAlpha: 0, y: o.y ?? 40 }, { autoAlpha: 1, y: 0, duration: o.d ?? 0.5, ease: o.ease ?? "power3.out", stagger: o.stagger ?? 0 }, t);
+        const draw = (e, t, d = 0.6, ease = "power2.inOut") => tl.fromTo(e, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: d, ease }, t);
+        const bump = (e, t, o = {}) => {
+          tl.to(e, { scale: o.s ?? 1.08, duration: 0.08, ease: "power2.out" }, t);
+          tl.to(e, { scale: 1, duration: 0.3, ease: "power2.out" }, t + 0.08);
+        };
+        const typeIn = (e, t, o = {}) => {
+          const el = typeof e === "string" ? $(e) : e;
+          const n = Math.max(1, el.textContent.replace(/\s+/g, " ").trim().length), d = o.d ?? n * 0.035;
+          tl.fromTo(el, { clipPath: "inset(-20% 100% -20% 0%)" }, { clipPath: "inset(-20% 0% -20% 0%)", duration: d, ease: `steps(${n})` }, t);
+          tl.set(el, { clipPath: "none", ...NI }, t + d);
+          return d;
+        };
+        const smear = (e, t, o = {}) => {
+          const dx = o.dx ?? -260;
+          tl.fromTo(e, { autoAlpha: 0, x: dx, skewX: dx < 0 ? -18 : 18 }, { autoAlpha: 1, x: 0, skewX: 0, duration: o.d ?? 0.34, ease: "expo.out", stagger: o.stagger ?? 0 }, t);
+        };
+        const lineIn = (e, t, o = {}) => tl.fromTo(e, { yPercent: 110, rotate: o.rot ?? 4 }, { yPercent: 0, rotate: 0, duration: o.d ?? 0.6, ease: o.ease ?? "expo.out", stagger: { each: o.each ?? 0.06, ease: "power1.in" } }, t);
+        const lineOut = (e, t, o = {}) => tl.to(e, { yPercent: -110, duration: o.d ?? 0.36, ease: "power3.in", stagger: o.each ?? 0.03 }, t);
+        // slamSoft: blur-free soft impact: lands slightly oversized, squashes under 1, settles with a small overshoot
+        const slamSoft = (e, t) => {
+          const t0 = Math.max(0, t - 0.16);
+          tl.fromTo(e, { autoAlpha: 0, scale: 1.25 }, { autoAlpha: 1, scale: 0.96, duration: Math.max(FR, t - t0), ease: "expo.in", ...NI }, t0);
+          tl.to(e, { scale: 1, duration: 0.4, ease: "back.out(1.4)" }, t);
+        };
+        // runPulse: the accent pulse that rides a rail during holds
+        const runPulse = (e, t, d, x0, x1, ease = "power1.inOut") => {
+          tl.set(e, { autoAlpha: 1, x: x0, ...NI }, t);
+          tl.fromTo(e, { x: x0 }, { x: x1, duration: d, ease, ...NI }, t);
+          tl.set(e, { autoAlpha: 0, ...NI }, t + d);
+        };
+        const crossT = (ease, t0, d, p) => {
+          const f = gsap.parseEase(ease);
+          for (let i = 0; i <= 400; i++) if (f(i / 400) >= p) return t0 + (d * i) / 400;
+          return t0 + d;
+        };
+        const blink = (e, t0, t1, step = 0.4) => {
+          for (let t = t0, n = 0; t < t1; t += step, n++) tl.set(e, { autoAlpha: n % 2 ? 0 : 1, ...NI }, t);
+          tl.set(e, { autoAlpha: 1, ...NI }, t1);
+        };
+        const show = (sel, t) => tl.set(sel, { autoAlpha: 1, ...NI }, Math.max(0, t));
+        const hide = (sel, t) => tl.set(sel, { autoAlpha: 0, ...NI }, Math.max(0, t));
+
+        // ======================= s01 cover =======================
+        {
+          const sid = I1;
+          const hl = $$("#sc01 .mask:nth-of-type(1) .w"), sub = $$("#sc01 .sub .w");
+          const PARK = [1470, 1620, 1770];
+          bump("#od", 0.05, { s: 1.25 });
+          tl.fromTo("#rail .rl", { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "expo.out", ...NI }, 0.12);
+          lineIn(hl, 0.25, { d: 0.6, each: 0.08, rot: 4 });
+          tl.fromTo(sub, { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: "power4.out", stagger: 0.04 }, 0.65);
+          const one = W(sid, "one");
+          tl.to(sub[0], { color: ACC, duration: 0.1 }, one);
+          tl.to(sub[0], { scale: 1.08, duration: 0.12, ease: "power2.out", transformOrigin: "50% 60%" }, one);
+          tl.to(sub[0], { scale: 1, duration: 0.22, ease: "power3.out" }, one + 0.12);
+          const tB = [one, one + 0.15, W(sid, "at")];
+          B.forEach((b, i) => {
+            tl.fromTo(b, { autoAlpha: 0, x: 138, y: 800, skewX: -18, scale: 1 }, { autoAlpha: 1, x: PARK[i], skewX: 0, duration: 0.6, ease: "expo.out", ...NI }, tB[i]);
+          });
+          runPulse("#pA", 0.75, 0.6, 0, 1572);
+          // exit: branch-off
+          const te = 2.08;
+          lineOut(hl, te, { d: 0.36 });
+          lineOut(sub, te + 0.05, { d: 0.32, each: 0.02 });
+          tl.to("#rail", { y: 640, duration: 0.5, ease: "power3.inOut" }, te);
+          tl.to(B, { y: 640, duration: 0.5, ease: "power3.inOut" }, te);
+          tl.to("#od", { scale: 0, duration: 0.25, ease: "power2.in" }, te);
+          hide("#sc01", S2 + 0.1);
+        }
+
+        // ======================= s02 split =======================
+        {
+          const sid = I2;
+          show("#sc02", S2 - 0.05);
+          const hw = $$("#sc02 .hl .w");
+          // blocks hand over to the commit dots: they shrink into the rail as the dots populate
+          tl.to(B, { scale: 0, autoAlpha: 0, duration: 0.2, ease: "power2.in" }, S2 + 0.2);
+          tl.set(B, { width: 88, height: 64, ...NI }, S2 + 0.45);
+          tl.set(".na", { autoAlpha: 1, ...NI }, S2 + 0.45);
+          pop(dots, S2 + 0.05, { d: 0.35, ease: "back.out(1.4)", stagger: { each: 0.06, ease: "power1.in" } });
+          lineIn(hw, S2 + 0.3, { d: 0.6, each: 0.07 });
+          const range = W(sid, "range");
+          runPulse("#pA", range, 0.7, 0, 1572);
+          const g = W(sid, "groups");
+          cls.forEach((box, k) => {
+            const tb = g + k * 0.14;
+            tl.fromTo(brs[k], { autoAlpha: 0, scaleX: 0 }, { autoAlpha: 1, scaleX: 1.12, duration: 0.3, ease: "expo.out", ...NI }, tb);
+            tl.to(brs[k], { scaleX: 1, duration: 0.25, ease: "back.out(1.4)" }, tb + 0.3);
+            tl.to(box, { y: -64, duration: 0.4, ease: "power3.out" }, tb + 0.12);
+            rise(`#lab${k + 1}`, tb + 0.12, { y: 30, d: 0.35, ease: "power4.out" });
+          });
+          smear("#pill", S2 + 2.15, { dx: -260, d: 0.4 });
+          // hold: pulse passes under the brackets and each ticks brighter
+          const tp = S2 + 2.2;
+          runPulse("#pA", tp, 0.6, 0, 1572, "power1.inOut");
+          brs.forEach((b, k) => {
+            const tt = crossT("power1.inOut", tp, 0.6, (cxs[k] - 183) / 1572);
+            tl.to(b, { borderColor: ACC_LIGHT, duration: 0.06 }, tt);
+            tl.to(b, { borderColor: ACC, duration: 0.25 }, tt + 0.08);
+          });
+          // exit: match-move, each cluster compresses into a numbered block that arcs to the s03 panel
+          const te = S2 + 2.95;
+          lineOut(hw, te, { d: 0.36 });
+          tl.to("#pill", { x: -300, autoAlpha: 0, duration: 0.35, ease: "power3.in" }, te);
+          tl.to(["#lab1", "#lab2", "#lab3"], { autoAlpha: 0, duration: 0.15, ease: "power2.in" }, te);
+          CLU.forEach((ids, k) => {
+            tl.to(ids.map((i) => dots[i]), { x: cxs[k], scale: 0, duration: 0.25, ease: "power2.in" }, te);
+            tl.to(brs[k], { scaleX: 0.3, autoAlpha: 0, duration: 0.25, ease: "power2.in" }, te);
+          });
+          const SLOT = [[934, 440], [1030, 590], [1126, 740]];
+          B.forEach((b, k) => {
+            tl.fromTo(b, { autoAlpha: 0, scale: 0.4, x: cxs[k], y: 576 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: "back.out(1.4)", ...NI }, te + 0.2 + k * 0.05);
+            tl.to(b, { x: SLOT[k][0], duration: 0.55, ease: "expo.inOut" }, te + 0.35 + k * 0.05);
+            tl.to(b, { y: SLOT[k][1], duration: 0.55, ease: "power2.inOut" }, te + 0.35 + k * 0.05);
+          });
+          tl.to("#rail", { y: 1010, duration: 0.5, ease: "power3.inOut" }, te + 0.05);
+          hide("#sc02", S3 + 0.05);
+        }
+
+        // ======================= s03 check =======================
+        {
+          const sid = I3;
+          show("#sc03", S3 - 0.15);
+          tl.fromTo("#panel", { autoAlpha: 0, y: 60 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "expo.out" }, S3 - 0.1);
+          const tt = W(sid, "every") - 0.1;
+          const d = typeIn("#cmd", tt);
+          tl.fromTo("#caret", { x: 0 }, { x: 21 * 28.8, duration: d, ease: "steps(21)", ...NI }, tt);
+          const hw = $$("#sc03 .hl .w");
+          // the headline waits until block 01 has crossed the panel's left edge
+          lineIn(hw, S3 + 0.45, { d: 0.6, each: 0.07 });
+          const cum = W(sid, "cumulative");
+          // stacks fill by vertical inheritance: copies drop from the row above
+          const CL = [["#C21", 934, 590], ["#C31", 934, 740], ["#C32", 1030, 740]];
+          CL.forEach(([id, x, y], i) => {
+            gsap.set(id, { x, y });
+            tl.fromTo(id, { autoAlpha: 0, y: y - 150 }, { autoAlpha: 1, y, duration: 0.3, ease: "back.out(1.4)", ...NI }, cum + i * 0.06);
+          });
+          for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+            tl.fromTo(rings[r][c], { autoAlpha: 0, scale: 0.5, transformOrigin: "50% 50%" }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: "back.out(1.4)" }, cum + 0.3 + (r + c) * 0.04);
+          }
+          const built = W(sid, "built"), tested = W(sid, "tested");
+          const tickT = (r, c) => (c === 0 ? built + r * 0.08 : c === 1 ? tested + r * 0.08 : tested + 0.2 + r * 0.08);
+          for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) draw(ticks[r][c], tickT(r, c), 0.22, "power2.out");
+          const pillT = [0, 1, 2].map((r) => tickT(r, 2) + 0.22 + 0.07);
+          pop(readies[0], pillT[0], { from: 0.5, d: 0.35 });
+          pop(readies[1], pillT[1], { from: 0.5, d: 0.35 });
+          slamSoft(readies[2], pillT[2]);
+          tl.to("#panel", { borderColor: ADD, duration: 0.04 }, pillT[2]);
+          tl.to("#panel", { borderColor: BORDER, duration: 0.2 }, pillT[2] + 0.12);
+          // hold motion
+          const te = S3 + 3.15;
+          blink("#caret", S3 + 0.8, te - 0.05);
+          runPulse("#pA", S3 + 0.9, 0.8, 0, 1572);
+          tl.set("#pp", { autoAlpha: 1, y: 0, ...NI }, S3 + 2.65);
+          tl.fromTo("#pp", { y: 0 }, { y: 300, duration: 0.45, ease: "power1.inOut", ...NI }, S3 + 2.65);
+          hide("#pp", S3 + 3.12);
+          // exit: diff-scroll; the row 3 stack detaches, drops onto the rail and slides left
+          tl.to("#panel", { y: -900, duration: 0.5, ease: "power2.inOut" }, te);
+          tl.to(["#B1", "#B2", "#C21"], { y: "-=900", duration: 0.5, ease: "power2.inOut" }, te);
+          hide(["#B1", "#B2", "#C21"], te + 0.55);
+          lineOut(hw, te, { d: 0.36 });
+          const stack = ["#C31", "#C32", "#B3"];
+          tl.to(stack, { y: 620, duration: 0.4, ease: "power3.inOut" }, te + 0.05);
+          tl.to(stack, { x: "-=560", duration: 0.45, ease: "power2.inOut" }, te + 0.4); // slides left only after the headline has left
+          tl.to("#rail", { y: 620, duration: 0.45, ease: "power3.inOut" }, te + 0.05);
+          tl.to(stack, { autoAlpha: 0, scale: 0.8, duration: 0.12, ease: "power2.in" }, S4 + 0.42);
+          hide("#sc03", S4 + 0.1);
+        }
+
+        // ======================= s04 handoff =======================
+        {
+          const sid = I4;
+          show("#sc04", S4 - 0.1);
+          smear(["#cardB2", "#cardB1", "#card"], S4, { dx: -300, d: 0.45, stagger: 0.04 });
+          const hw = $$("#sc04 .hl .w");
+          lineIn(hw, S4 + 0.12, { d: 0.45, each: 0.06 });
+          tl.fromTo("#gate rect", { scaleX: 0, transformOrigin: "960px 620px" }, { scaleX: 1, duration: 0.3, ease: "expo.out" }, S4 + 0.1);
+          // the headline is read first; the person and the gate arrive after it settles
+          pop("#you", W(sid, "you"), { from: 0.4, d: 0.4 });
+          pop(".post", W(sid, "you"), { from: 0.4, d: 0.3 });
+          runPulse("#pA", S4 + 0.95, 0.45, 500, 652, "expo.out"); // only the stub left of the gate; it stops dead
+          // hero: the person presses, block 01 crosses the gate on an arc, r101 lands with the piece's one ring
+          const press = S4 + 1.4;
+          tl.to("#you", { scale: 0.96, duration: 0.05, ease: "power2.out" }, press);
+          tl.to("#you", { scale: 1, duration: 0.2, ease: "back.out(1.4)" }, press + 0.1);
+          tl.fromTo("#ringYou", { autoAlpha: 0.9, scale: 1 }, { autoAlpha: 0, scale: 1.6, duration: 0.4, ease: "expo.out", ...NI }, press);
+          const RX = [1200, 1450, 1700];
+          const cross = (k, t0, d) => {
+            const b = B[k];
+            tl.fromTo(b, { autoAlpha: 0, scale: 1, skewX: 0, x: 800, y: 620 }, { autoAlpha: 1, duration: 0.05, ...NI }, t0);
+            tl.to(b, { x: RX[k], duration: d, ease: "power1.inOut" }, t0 + 0.05);
+            tl.to(b, { y: 500, duration: d / 2, ease: "power2.out" }, t0 + 0.05);
+            tl.to(b, { y: 620, duration: d / 2, ease: "power2.in" }, t0 + 0.05 + d / 2);
+            const tl0 = t0 + 0.05 + d;
+            tl.to(b, { scale: 0.5, autoAlpha: 0, duration: 0.12, ease: "power2.in" }, tl0);
+            tl.fromTo(R[k], { autoAlpha: 0, scale: 0.4, x: RX[k], y: 620 }, { autoAlpha: 1, scale: 1, duration: 0.4, ease: "back.out(1.4)", ...NI }, tl0);
+            rise(`#rl${k + 1}`, tl0 + 0.08, { y: 24, d: 0.35, ease: "power4.out" });
+            return tl0;
+          };
+          const land1 = cross(0, S4 + 1.45, 0.5);
+          tl.fromTo("#ringR", { autoAlpha: 0.9, scale: 1, x: 1200, y: 620 }, { autoAlpha: 0, scale: 2.6, duration: 0.5, ease: "expo.out", ...NI }, land1);
+          cross(1, S4 + 1.75, 0.3);
+          cross(2, S4 + 1.98, 0.3);
+          // step chips light as block 01 passes, then relax to an outlined chip
+          const cm = W(sid, "commit");
+          ["#st1", "#st2", "#st3"].forEach((s, i) => {
+            tl.to(s, { backgroundColor: ACC, borderColor: ACC, color: INK, duration: 0.15, ease: "power4.out" }, cm + 0.15 + i * 0.13);
+            tl.to(s, { backgroundColor: SURF, borderColor: ACC, color: INK, duration: 0.25, ease: "power2.out" }, land1 + 0.3);
+          });
+          // bottom strip rises on "never"; the commands keep ink text, the strike and a red border carry the meaning
+          tl.fromTo("#strip", { yPercent: 110 }, { yPercent: 0, duration: 0.45, ease: "power4.out" }, W(sid, "never"));
+          const k1 = W(sid, "svn", 2), k2 = W(sid, "git");
+          tl.to("#k1", { scaleX: 1, duration: 0.22, ease: "expo.out" }, k1);
+          tl.to("#k2", { scaleX: 1, duration: 0.22, ease: "expo.out" }, k2);
+          tl.to("#c1", { borderColor: DEL, duration: 0.05 }, k1 + 0.22);
+          tl.to("#c2", { borderColor: DEL, duration: 0.05 }, k2 + 0.22);
+          runPulse("#pB", S4 + 3.3, 0.6, 902, 1572);
+          // exit: merge-join; blocks reappear on the left rail, rail lifts, a second rail carries the purple dots
+          const te = S4 + 4.35;
+          lineOut(hw, te, { d: 0.36 });
+          tl.to(["#cardB2", "#cardB1", "#card", "#st1", "#st2", "#st3", "#you", ".post"], { y: "+=300", autoAlpha: 0, duration: 0.35, ease: "power3.in" }, te);
+          tl.to("#gate rect", { scaleX: 0, duration: 0.25, ease: "power3.in" }, te);
+          tl.to("#strip", { yPercent: 110, duration: 0.3, ease: "power3.in" }, te);
+          tl.to(["#rl1", "#rl2", "#rl3"], { autoAlpha: 0, duration: 0.12, ease: "power2.in" }, te);
+          const BX = [700, 960, 1220];
+          B.forEach((b, k) => {
+            tl.fromTo(b, { autoAlpha: 0, scale: 0.4, x: BX[k], y: 620 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: "back.out(1.4)", ...NI }, te + 0.15 + k * 0.04);
+            tl.to(b, { y: 300, duration: 0.45, ease: "power3.inOut" }, te + 0.25);
+            tl.to(R[k], { x: BX[k], duration: 0.45, ease: "expo.inOut" }, te + 0.1);
+            tl.to(R[k], { y: 420, duration: 0.45, ease: "power2.inOut" }, te + 0.1);
+          });
+          tl.to("#rail", { y: 300, duration: 0.45, ease: "power3.inOut" }, te + 0.25);
+          tl.to("#rail .rl", { x: 382, scaleX: 880 / 1662, duration: 0.45, ease: "power3.inOut" }, te + 0.25);
+          tl.fromTo("#rail2 .rl", { scaleX: 0 }, { scaleX: 880 / 1662, duration: 0.45, ease: "expo.out", ...NI }, te + 0.25);
+          hide("#sc04", S5 + 0.45);
+        }
+
+        // ======================= s05 outro =======================
+        {
+          const sid = I5;
+          show("#sc05", S5 - 0.05);
+          const title = $$("#sc05 .mono .w"), tag = $$("#sc05 .tag .w");
+          lineIn(title, S5 + 0.3, { d: 0.55 });
+          const noth = W(sid, "nothing");
+          tl.fromTo(tag, { yPercent: 110 }, { yPercent: 0, duration: 0.5, ease: "power4.out", stagger: 0.05 }, noth);
+          const miss = W(sid, "missing");
+          ["#cn1", "#cn2", "#cn3"].forEach((c, i) => tl.to(c, { scaleY: 1, duration: 0.22, ease: "power2.out" }, miss + i * 0.1));
+          // the two "Nothing" keywords turn purple, the second 0.18 s after the first
+          [0, 2].forEach((i, n) => {
+            const t = noth + 0.3 + n * 0.18;
+            tl.to(tag[i], { color: MERGE, duration: 0.1 }, t);
+            tl.to(tag[i], { scale: 1.08, duration: 0.12, ease: "power2.out", transformOrigin: "50% 60%" }, t);
+            tl.to(tag[i], { scale: 1, duration: 0.22, ease: "power3.out" }, t + 0.12);
+          });
+          const rep = W(sid, "repeated");
+          B.forEach((b, i) => {
+            const t = rep + i * 0.1;
+            bump(b, t, { s: 1.12 });
+            bump(R[i], t + 0.02, { s: 1.25 });
+            tl.to(b, { borderColor: INK, duration: 0.08 }, t);
+            tl.to(b, { borderColor: ACC, duration: 0.2 }, t + 0.1);
+          });
+          tl.fromTo("#inst", { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: "back.out(1.4)" }, S5 + 1.05);
+          const te = S5 + 3.22;
+          blink("#icaret", S5 + 1.5, te - 0.05, 0.3);
+          // hold motion: the pulse crosses the top rail, then the bottom rail
+          runPulse("#pA", S5 + 1.9, 0.5, 382, 1172);
+          runPulse("#pC", S5 + 2.4, 0.5, 382, 1172);
+          // exit, strictly in order: text into its masks first, then the rails merge and retract into the origin dot
+          hide(["#icaret", "#pA", "#pB", "#pC", "#cn1", "#cn2", "#cn3"], te);
+          lineOut(title, te, { d: 0.28 });
+          lineOut(tag, te, { d: 0.28, each: 0.02 });
+          tl.to("#inst", { y: 50, autoAlpha: 0, duration: 0.28, ease: "power3.in" }, te);
+          const tr = te + 0.28;
+          tl.to(["#rail", "#rail2"], { y: 800, duration: 0.45, ease: "expo.inOut" }, tr);
+          tl.to(["#rail .rl", "#rail2 .rl"], { x: 0, scaleX: 0, duration: 0.45, ease: "expo.inOut" }, tr);
+          tl.to(B, { x: 138, y: 800, scale: 0.3, duration: 0.45, ease: "expo.inOut" }, tr);
+          tl.to(R, { x: 138, y: 800, scale: 0.3, duration: 0.45, ease: "expo.inOut" }, tr);
+          tl.to([...B, ...R], { autoAlpha: 0, duration: 0.08 }, tr + 0.25);
+          tl.fromTo("#od", { scale: 0 }, { scale: 1, duration: 0.3, ease: "back.out(1.4)", ...NI }, tr + 0.15);
+          hide(["#rail", "#rail2"], tr + 0.46);
+        }
+
+        tl.set({}, {}, T.duration);
+      })();
+    </script>
+  </body>
+</html>

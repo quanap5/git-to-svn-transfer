@@ -1,0 +1,56 @@
+{
+  "release": "git-to-svn-transfer 1.1.0",
+  "source": "skills/git-to-svn-transfer/SKILL.md, README.md",
+  "voice": null,
+  "note": "Silent README banner exported as a looping GIF. There is no voice-over: each line's `en` is on-screen copy, and its words are the anchors for hand-written TIMING. Target duration 15 s.",
+  "scenes": [
+    {
+      "id": "s01-cover",
+      "type": "cover",
+      "seconds": 2.5,
+      "lines": [
+        { "en": "Git to SVN" },
+        { "en": "One functional group at a time." }
+      ]
+    },
+    {
+      "id": "s02-split",
+      "type": "timeline",
+      "seconds": 3.5,
+      "lines": [
+        { "en": "Split a Git range into functional groups." }
+      ],
+      "onScreen": ["a Git commit graph", "group 01", "group 02", "group 03", "branch svn-transfer/<run-id>", "one worktree per group"]
+    },
+    {
+      "id": "s03-check",
+      "type": "terminal",
+      "seconds": 3.5,
+      "lines": [
+        { "en": "Every cumulative state is built and tested." }
+      ],
+      "onScreen": ["verify --run-checks", "build", "test", "smoke", "group 01 ready", "group 02 ready", "group 03 ready", "status vocabulary: ready, failed, blocked, unverified"]
+    },
+    {
+      "id": "s04-handoff",
+      "type": "feature",
+      "seconds": 3.5,
+      "lines": [
+        { "en": "You commit to SVN." },
+        { "en": "The tool never runs svn commit or git push." }
+      ],
+      "onScreen": ["groups/01/ delta package", "message.txt", "SVN_MANUAL_TRANSFER.md", "apply, precommit, record", "SVN revisions r101, r102, r103 (illustrative numbers)"]
+    },
+    {
+      "id": "s05-outro",
+      "type": "outro",
+      "outro": true,
+      "seconds": 2.5,
+      "lines": [
+        { "en": "git-to-svn-transfer" },
+        { "en": "Nothing missing. Nothing repeated." }
+      ],
+      "onScreen": ["/plugin install git-to-svn-transfer@git-to-svn-transfer"]
+    }
+  ]
+}
