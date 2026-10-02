@@ -48,20 +48,75 @@ Other ways to install are in
 [install-and-environments.md](skills/git-to-svn-transfer/references/install-and-environments.md).
 
 Requirements: Python 3.8+, `git`, and an `svn` command-line client. Standard
-library only; nothing to `pip install`.
+library only; nothing to `pip install`. TortoiseSVN installs the `svn` client
+only if "command line client tools" was selected in its installer.
+
+Restart Claude Code, or run `/reload-plugins`, so the skill shows up.
 
 ## Use
 
-With an agent: ask it to move Git changes into SVN, or run
-`/git-to-svn-transfer:git-to-svn-transfer`. The agent reads
+Open Claude Code in the Git repository you want to transfer. Ask in your own
+words, or call the skill by name:
+
+```text
+/git-to-svn-transfer:git-to-svn-transfer transfer the commits from <base> to HEAD into the SVN working copy at D:\svn\myproject, in about 5 groups
+```
+
+Tell the agent three things:
+
+- **The baseline.** Which Git commit SVN currently matches (`--base <ref>`), or
+  that this is a first import. The skill never guesses it and asks when it is
+  missing.
+- **The SVN working copy.** The directory you checked out with `svn checkout`.
+- **The svn client**, when `svn` is not on `PATH`. For a Windows client driven
+  from WSL, for example `/mnt/c/Program Files/TortoiseSVN/bin/svn.exe`.
+
+What happens next:
+
+1. **Plan.** The agent inspects the repository, splits the changes into
+   functional groups, picks the project's build and test commands as checks,
+   and shows you the plan.
+2. **Prepare.** A run directory is created outside the repository, with one Git
+   worktree, one delta package and one `message.txt` per group, plus the guide
+   `SVN_MANUAL_TRANSFER.md`.
+3. **Verify.** The checks run on every cumulative state. Each group becomes
+   `ready`, `failed`, `blocked` or `unverified`; only `ready` should go to SVN.
+4. **Transfer, one group at a time, in order.**
+   - `apply` copies the files into the working copy and schedules adds,
+     deletes and moves.
+   - `precommit` checks the group again inside the working copy.
+   - **You run `svn commit`** with the text in `message.txt`.
+   - `record` stores the revision you committed.
+5. **Clean up.** Ask the agent to remove the worktrees and the temporary branch
+   `svn-transfer/<run-id>`.
+
+If a run is interrupted, ask the agent to resume the run directory; it
+continues instead of starting over.
+
+Good to know:
+
+- The source repository's branch, index and uncommitted changes are never
+  touched. Uncommitted changes are left out unless you ask for them.
+- With a Windows `svn.exe` driven from WSL, the working copy and the run
+  directory must be on a Windows drive (`/mnt/c`, `/mnt/d`), not in the Linux
+  filesystem.
+
+The agent's full instructions are in
 [SKILL.md](skills/git-to-svn-transfer/SKILL.md).
 
-Without an agent, from a clone of this repository:
+### Without an agent
+
+From a clone of this repository:
 
 ```bash
 python3 skills/git-to-svn-transfer/scripts/git_to_svn.py --help
 python3 skills/git-to-svn-transfer/scripts/git_to_svn.py inspect --repo <repo> --base <git-ref> --svn-wc <svn-wc>
 ```
+
+The subcommands are `inspect`, `plan`, `prepare`, `verify`, `resume`, `apply`,
+`precommit`, `record` and `cleanup`. You write the plan file yourself; its
+format is in
+[plan-format.md](skills/git-to-svn-transfer/references/plan-format.md).
 
 ## Layout
 
