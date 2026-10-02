@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+assets/videos/*/renders/
+assets/videos/*/snapshots/

@@ -1,5 +1,7 @@
 # git-to-svn-transfer
 
+![git-to-svn-transfer: Git commits are split into functional groups, each cumulative state is built and tested, and you commit each group to SVN yourself](assets/readme-banner.gif)
+
 A Claude Code plugin that prepares changes from a Git repository for a manual,
 group-by-group transfer into Subversion. This repository is also its own plugin
 marketplace. The skill inside follows the
@@ -73,6 +75,7 @@ skills/git-to-svn-transfer/
   references/               detail the agent loads when needed
   assets/                   plan and guide templates
 tests/                      test suite; not part of the skill
+assets/                     README banner and its motion-graphic source
 ```
 
 ## Documentation
