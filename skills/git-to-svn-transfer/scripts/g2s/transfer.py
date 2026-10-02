@@ -1177,7 +1177,8 @@ def cleanup(run_dir, execute=False, discard_untracked=False):
                 manifest["branch"], branch_now[:10]))
     report = {"run": run_dir, "executed": execute, "would_remove" if not execute else "removed": plan,
               "refused": refused,
-              "kept": [MANIFEST, "GROUPS.md", "SVN_MANUAL_TRANSFER.md", "groups/", "plan.json"]}
+              "kept": [MANIFEST, "GROUPS.md", "SVN_MANUAL_TRANSFER.md", "dashboard.html", "events.jsonl", "groups/",
+                       "plan.json"]}
     for entry in plan:
         progress.item("%s %s" % (entry["kind"], entry.get("group") or entry.get("name")), "exists")
     for reason in refused:

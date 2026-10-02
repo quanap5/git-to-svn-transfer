@@ -4,7 +4,7 @@ description: Prepare changes from a Git repository for a manual, group-by-group 
 license: MIT
 compatibility: Requires Python 3.8+, the git CLI and an svn CLI client. Tested on WSL2 Ubuntu 22.04 with Python 3.10, Git 2.34 and the TortoiseSVN command-line client 1.14 (svn.exe driven from WSL). Other platforms are untested.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Git to SVN transfer
@@ -54,6 +54,22 @@ and one line per group or check with its status.
 
   Use the script's own status words (`ready`, `failed`, `blocked`, `unverified`,
   `verified`, `mismatch`, `not_run`) unchanged.
+
+## Dashboard
+
+Every command that works on a run rewrites `<run-dir>/dashboard.html` and adds a
+line to `<run-dir>/events.jsonl`. The dashboard is one self-contained page the
+user opens in a browser: the groups with their add, modify, delete and rename
+counts, the file tree of each group (changed files only, or the whole cumulative
+worktree), check results with links to their logs, the last verification, and a
+timeline of the commands that were run. It is a view: nothing reads it back.
+
+Give the user its path after `prepare` and whenever they ask where things stand.
+To rebuild it without doing anything else:
+
+```bash
+python3 scripts/git_to_svn.py report --run <run-dir>
+```
 
 ## Boundaries
 
@@ -181,7 +197,7 @@ python3 scripts/git_to_svn.py prepare <source options> --plan <plan.json> \
 ```
 
 This creates `<out>/<run-id>/` holding `manifest.json`, `GROUPS.md`,
-`SVN_MANUAL_TRANSFER.md`, `groups/NN/` (delta package and `message.txt`) and
+`SVN_MANUAL_TRANSFER.md`, `dashboard.html`, `groups/NN/` (delta package and `message.txt`) and
 `worktrees/group-NN` (real Git worktrees; group NN is the baseline plus groups
 01 to NN). Every group starts `unverified`.
 

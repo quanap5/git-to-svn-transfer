@@ -122,6 +122,10 @@ The tests are skipped, with the reason, when no svn client or svnadmin is found.
   output is listed; skipping the checks gives `unverified`.
 - The command line end to end, and the rendered guide having no unfilled field.
 - That no script contains a committing or pushing command.
+- The dashboard: `dashboard.html` and `events.jsonl` after prepare and verify, the
+  embedded data, renames in the file tree, the `report` command, and data that
+  cannot close its `<script>` element early. The page itself was looked at once in
+  headless Chrome; its JavaScript has no automated test.
 - Progress reporting: stderr only, plain text when stderr is not a terminal,
   colour and `NO_COLOR` on a terminal, ASCII marks on a console that cannot
   encode the glyphs (simulated), `--progress off`, and stdout staying valid JSON.

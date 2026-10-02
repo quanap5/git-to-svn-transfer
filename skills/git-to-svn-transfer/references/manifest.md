@@ -8,6 +8,8 @@
   plan.json                  the plan as it was given
   GROUPS.md                  group table, warnings, differences
   SVN_MANUAL_TRANSFER.md     the guide the user follows
+  dashboard.html             readable view of the run, rebuilt after every command; open it in a browser
+  events.jsonl               one line per command run on this run: at, command, exit_code, summary, group
   groups/NN/
     payload/                 added and modified files of group NN only
     add.txt modify.txt delete.txt     one path per line

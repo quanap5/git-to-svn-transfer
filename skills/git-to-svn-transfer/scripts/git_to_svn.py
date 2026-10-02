@@ -14,7 +14,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from g2s import TOOL_VERSION, planning, progress, transfer  # noqa: E402
+from g2s import TOOL_VERSION, dashboard, planning, progress, transfer  # noqa: E402
 from g2s import checks as checks_mod  # noqa: E402
 from g2s.common import G2SError, read_json  # noqa: E402
 
@@ -119,11 +119,26 @@ def build_parser():
     p.add_argument("--execute", action="store_true")
     p.add_argument("--discard-untracked", action="store_true",
                    help="also remove worktrees whose only differences are untracked files, such as check output")
+    p = sub.add_parser("report", help="rebuild dashboard.html, the readable view of a run (read-only for the run)")
+    p.add_argument("--run", required=True)
+
     for command in sub.choices.values():
         command.add_argument("--progress", choices=("auto", "plain", "off"), default="auto",
                              help="progress lines on stderr: 'auto' colours them on a terminal and keeps them "
                                   "plain otherwise, 'plain' never colours, 'off' prints none (default: auto)")
     return parser
+
+
+def _record(command, run_dir, code, summary, group=None):
+    """Add the command to the run's history and rebuild its dashboard. Never fails the command."""
+    if not run_dir or not os.path.isfile(os.path.join(run_dir, "manifest.json")):
+        return None
+    try:
+        dashboard.log_event(run_dir, command, code, summary, group)
+        return dashboard.write(run_dir)
+    except (G2SError, OSError, KeyError, ValueError) as exc:
+        sys.stderr.write("warning: dashboard.html was not updated: %s\n" % exc)
+        return None
 
 
 def _summary(command, result):
@@ -140,6 +155,8 @@ def _summary(command, result):
         return "ready to prepare" if result["ready_to_prepare"] else "%d blocker(s)" % len(result["blockers"])
     if command == "resume":
         return "state %s" % result["state"]
+    if command == "report":
+        return result["dashboard"]
     return "removed" if result["executed"] else "dry run"
 
 
@@ -217,13 +234,24 @@ def main(argv=None):
             result = transfer.record_revision(args.run, args.group, args.revision, args.svn_wc,
                                               args.svn_bin, args.replace)
             code = 1 if result["status"] == "mismatch" else 0
+        elif args.command == "report":
+            if not os.path.isfile(os.path.join(args.run, "manifest.json")):
+                raise G2SError("no manifest.json in %s; --run must name a run directory" % args.run)
+            result = {"dashboard": dashboard.write(args.run)}
         else:
             result = transfer.cleanup(args.run, args.execute, args.discard_untracked)
     except G2SError as exc:
         progress.finish(2, "stopped")
+        _record(args.command, opts.get("run"), 2, str(exc).splitlines()[0], opts.get("group"))
         sys.stderr.write("error: %s\n" % exc)
         return 2
-    progress.finish(code, _summary(args.command, result))
+    summary = _summary(args.command, result)
+    if args.command != "report":
+        written = _record(args.command, result["run"] if args.command == "prepare" else opts.get("run"), code,
+                          "run prepared" if args.command == "prepare" else summary, opts.get("group"))
+        if args.command == "prepare":
+            result["dashboard"] = written
+    progress.finish(code, summary)
     json.dump(result, sys.stdout, indent=1, ensure_ascii=False)
     sys.stdout.write("\n")
     return code

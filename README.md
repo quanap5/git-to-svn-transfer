@@ -111,6 +111,21 @@ otherwise, and the JSON result on stdout is unchanged.
 Pass `--progress plain` for no colour or `--progress off` for no progress
 lines; `NO_COLOR` is respected.
 
+### Dashboard
+
+Each run directory holds `dashboard.html`, one self-contained page that is
+rebuilt after every command. Open it in a browser to see:
+
+- the groups, with their add, modify, delete and rename counts and their
+  readiness, precommit and SVN revision status;
+- the file tree of each group: only what the group changes, or the whole
+  cumulative worktree with the changes highlighted;
+- check results with links to their logs, and the last verification;
+- a timeline of the commands run on this run, kept in `events.jsonl`.
+
+It only shows the run; it has no buttons that change anything. Rebuild it with
+`git_to_svn.py report --run <run-dir>`.
+
 Good to know:
 
 - The source repository's branch, index and uncommitted changes are never
@@ -132,7 +147,7 @@ python3 skills/git-to-svn-transfer/scripts/git_to_svn.py inspect --repo <repo> -
 ```
 
 The subcommands are `inspect`, `plan`, `prepare`, `verify`, `resume`, `apply`,
-`precommit`, `record` and `cleanup`. You write the plan file yourself; its
+`precommit`, `record`, `cleanup` and `report`. You write the plan file yourself; its
 format is in
 [plan-format.md](skills/git-to-svn-transfer/references/plan-format.md).
 

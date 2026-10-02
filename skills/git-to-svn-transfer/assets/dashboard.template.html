@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git to SVN transfer</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2330; --mute: #667085; --line: #dfe3ea; --accent: #2f5fe0;
+  --good: #1a7f47; --bad: #c8321e; --warn: #9a6500; --neutral: #667085; --merge: #7a3fc4;
+  --good-bg: #e3f4ea; --bad-bg: #fbe6e2; --warn-bg: #fbf0d9; --neutral-bg: #eceff3; --accent-bg: #e4ebfd;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10131a; --panel: #171b24; --ink: #e8ecef; --mute: #8b93a0; --line: #2f3540; --accent: #6f93f5;
+    --good: #4cc27f; --bad: #f07a5f; --warn: #d9a13f; --neutral: #8b93a0; --merge: #c08df0;
+    --good-bg: #173524; --bad-bg: #3d1e18; --warn-bg: #3a2c12; --neutral-bg: #232934; --accent-bg: #1c2a4d;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+code, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 32px 0 12px; }
+.sub { color: var(--mute); overflow-wrap: anywhere; }
+.banner { margin-top: 12px; padding: 10px 14px; border-radius: 6px; background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.card b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+.card span { color: var(--mute); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--mute); font-weight: 600; font-size: 12px; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody.pick tr { cursor: pointer; }
+tbody.pick tr:hover td { background: var(--neutral-bg); }
+tbody.pick tr.on td { background: var(--accent-bg); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.good { color: var(--good); background: var(--good-bg); }
+.bad { color: var(--bad); background: var(--bad-bg); }
+.warn { color: var(--warn); background: var(--warn-bg); }
+.neutral { color: var(--neutral); background: var(--neutral-bg); }
+.bar { display: flex; height: 8px; min-width: 120px; border-radius: 4px; overflow: hidden; background: var(--neutral-bg); }
+.bar i { display: block; }
+.b-add { background: var(--good); } .b-modify { background: var(--accent); } .b-delete { background: var(--bad); }
+.b-rename { background: var(--merge); } .b-manual { background: var(--warn); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--mute); margin: 8px 0 0; font-size: 12px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+.detail { margin-top: 12px; padding: 16px; }
+.detail h3 { margin: 0 0 4px; font-size: 16px; }
+.tabs { display: flex; gap: 4px; margin: 16px 0 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button { border: 0; background: none; color: var(--mute); padding: 8px 12px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tools { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; color: var(--mute); }
+.tools input[type=search] { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); min-width: 220px; }
+.tree { max-height: 520px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+.tree details > div, .tree details > details { margin-left: 18px; }
+.tree summary { cursor: pointer; }
+.tree .f { padding-left: 14px; overflow-wrap: anywhere; }
+.tree .tag { font-size: 11px; font-weight: 700; margin-left: 8px; }
+.t-add { color: var(--good); } .t-modify { color: var(--accent); } .t-delete { color: var(--bad); text-decoration: line-through; }
+.t-rename { color: var(--merge); } .t-manual { color: var(--warn); }
+.c-add { color: var(--good); } .c-modify { color: var(--accent); } .c-delete { color: var(--bad); }
+.c-rename { color: var(--merge); } .c-manual { color: var(--warn); }
+.tree .n { color: var(--mute); font-size: 12px; margin-left: 6px; }
+pre { margin: 0; padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: auto; white-space: pre-wrap; }
+ul.plain { margin: 0; padding-left: 20px; }
+.nw { white-space: nowrap; }
+.empty { color: var(--mute); padding: 12px; }
+a { color: var(--accent); }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+dt { color: var(--mute); } dd { margin: 0; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script type="application/json" id="data">__G2S_DATA__</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var GOOD = ["ready", "passed", "verified", "done", "prepared"], BAD = ["failed", "mismatch"],
+      WARN = ["blocked", "user_provided", "planned"];
+  var OPS = ["add", "modify", "delete", "rename", "manual"];
+  var state = { group: 0, tab: "files", whole: false, filter: "" };
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      if (key === "text") node.textContent = attrs[key];
+      else if (key === "on") Object.keys(attrs.on).forEach(function (name) { node.addEventListener(name, attrs.on[name]); });
+      else node.setAttribute(key, attrs[key]);
+    });
+    (children || []).forEach(function (child) { if (child) node.appendChild(typeof child === "string" ? document.createTextNode(child) : child); });
+    return node;
+  }
+  function kind(status) {
+    return GOOD.indexOf(status) >= 0 ? "good" : BAD.indexOf(status) >= 0 ? "bad" : WARN.indexOf(status) >= 0 ? "warn" : "neutral";
+  }
+  function pill(status) { return el("span", { class: "pill " + kind(status), text: String(status || "not run").replace(/_/g, " ") }); }
+  function list(items, empty) {
+    if (!items || !items.length) return el("div", { class: "empty", text: empty });
+    return el("ul", { class: "plain" }, items.map(function (item) { return el("li", { text: item }); }));
+  }
+  function bar(counts) {
+    var total = OPS.reduce(function (sum, op) { return sum + counts[op]; }, 0) || 1;
+    return el("div", { class: "bar", title: OPS.map(function (op) { return counts[op] + " " + op; }).join(", ") },
+      OPS.map(function (op) { return counts[op] ? el("i", { class: "b-" + op, style: "width:" + (100 * counts[op] / total) + "%" }) : null; }));
+  }
+  function revision(group) {
+    var rev = group.revision;
+    return rev.revision === null ? el("span", { class: "sub", text: "not committed" })
+      : el("span", {}, [el("code", { text: "r" + rev.revision + " " }), pill(rev.status)]);
+  }
+
+  // The cumulative state of group i is the baseline plus the operations of groups 0..i.
+  function filesOf(index) {
+    // The old path of a rename is shown through the new path's "from", not as a deletion.
+    var group = D.groups[index], marks = {};
+    var shown = group.ops.filter(function (op) { return !op.to; });
+    shown.forEach(function (op) { marks[op.p] = op; });
+    if (!state.whole || !D.base_paths) return shown.map(function (op) { return { path: op.p, op: op }; });
+    var present = {};
+    D.base_paths.forEach(function (path) { present[path] = true; });
+    for (var i = 0; i <= index; i++) {
+      D.groups[i].ops.forEach(function (op) { if (op.o === "delete") delete present[op.p]; else present[op.p] = true; });
+    }
+    shown.forEach(function (op) { if (op.o === "delete") present[op.p] = true; });
+    return Object.keys(present).sort().map(function (path) { return { path: path, op: marks[path] || null }; });
+  }
+  function buildTree(files) {
+    var root = { dirs: {}, files: [], changed: 0, total: 0 };
+    files.forEach(function (file) {
+      var parts = file.path.split("/"), node = root;
+      root.total++; if (file.op) root.changed++;
+      for (var i = 0; i < parts.length - 1; i++) {
+        node = node.dirs[parts[i]] || (node.dirs[parts[i]] = { dirs: {}, files: [], changed: 0, total: 0 });
+        node.total++; if (file.op) node.changed++;
+      }
+      node.files.push({ name: parts[parts.length - 1], op: file.op });
+    });
+    return root;
+  }
+  function label(op) {
+    if (op.manual) return "manual";
+    if (op.from) return "rename";
+    return op.o;
+  }
+  // Children are created when a directory is first opened, so a large worktree stays light.
+  function fill(container, node, open) {
+    Object.keys(node.dirs).sort().forEach(function (name) {
+      var dir = node.dirs[name], filled = false;
+      var details = el("details", {}, [el("summary", {}, [name + "/",
+        el("span", { class: "n", text: dir.changed + " changed" + (state.whole ? " of " + dir.total : "") })])]);
+      function ensure() { if (!filled) { filled = true; fill(details, dir, open); } }
+      details.addEventListener("toggle", ensure);
+      if (open && dir.changed && dir.total <= 400) { details.open = true; ensure(); }
+      container.appendChild(details);
+    });
+    node.files.forEach(function (file) {
+      var row = el("div", { class: "f mono" }, [el("span", { class: file.op ? "t-" + label(file.op) : "", text: file.name })]);
+      if (file.op) {
+        row.appendChild(el("span", { class: "tag c-" + label(file.op), text: label(file.op).toUpperCase() }));
+        if (file.op.from) row.appendChild(el("span", { class: "n", text: "from " + file.op.from }));
+        if (file.op.bin) row.appendChild(el("span", { class: "n", text: "binary" }));
+        if (file.op.manual) row.appendChild(el("span", { class: "n", text: file.op.manual }));
+      }
+      container.appendChild(row);
+    });
+  }
+  function filesTab(index) {
+    var files = filesOf(index);
+    if (state.filter) {
+      var needle = state.filter.toLowerCase();
+      files = files.filter(function (file) { return file.path.toLowerCase().indexOf(needle) >= 0; });
+    }
+    var tree = el("div", { class: "tree" });
+    if (!files.length) tree.appendChild(el("div", { class: "empty", text: "No file matches." }));
+    else fill(tree, buildTree(files), true);
+    var whole = el("input", { type: "checkbox", on: { change: function () { state.whole = this.checked; render(); } } });
+    whole.checked = state.whole;
+    var search = el("input", { type: "search", placeholder: "Filter by path", value: state.filter,
+      on: { change: function () { state.filter = this.value; render(); } } });
+    return el("div", {}, [
+      el("div", { class: "tools" }, [search,
+        D.base_paths ? el("label", {}, [whole, " whole worktree (baseline + groups 01 to " + D.groups[index].id + ")"])
+          : el("span", { text: "Whole-worktree view is unavailable: the source repository could not be read." }),
+        el("span", { text: files.length + " file(s) shown" })]),
+      tree,
+      el("div", { class: "legend" }, OPS.map(function (op) { return el("span", {}, [el("i", { class: "b-" + op }), op]); }))]);
+  }
+  function checksTab(group) {
+    if (!group.checks.length) return el("div", { class: "empty", text: "No check has been run for this group." });
+    return el("div", { class: "scroll" }, [el("table", {}, [
+      el("thead", {}, [el("tr", {}, ["Where", "Check", "Kind", "Required", "Status", "Detail", "Log"].map(function (h) { return el("th", { text: h }); }))]),
+      el("tbody", {}, group.checks.map(function (check) {
+        return el("tr", {}, [
+          el("td", { text: check.where }), el("td", {}, [el("code", { text: check.name })]), el("td", { text: check.kind }),
+          el("td", { text: check.required ? "yes" : "no" }), el("td", {}, [pill(check.status)]), el("td", { text: check.reason || "" }),
+          el("td", {}, [check.log ? el("a", { href: check.log, text: "open" }) : null])]);
+      }))])]);
+  }
+  function overviewTab(group) {
+    var pre = group.precommit;
+    return el("dl", {}, [
+      el("dt", { text: "Rationale" }), el("dd", { text: group.rationale }),
+      el("dt", { text: "Depends on" }), el("dd", { text: group.depends_on.join(", ") || "none" }),
+      el("dt", { text: "Commit" }), el("dd", {}, [el("code", { text: group.commit || "not created" })]),
+      el("dt", { text: "Worktree" }), el("dd", {}, [el("code", { text: group.worktree })]),
+      el("dt", { text: "Package" }), el("dd", {}, [el("a", { href: group.package + "/", text: group.package + "/" })]),
+      el("dt", { text: "Readiness" }), el("dd", {}, [pill(group.readiness.status), " " + (group.readiness.reasons || []).join("; ")]),
+      el("dt", { text: "Precommit in SVN" }), el("dd", {}, [pill(pre ? pre.status : "not run"), " " + (pre ? (pre.reasons || []).join("; ") : "")]),
+      el("dt", { text: "SVN revision" }), el("dd", {}, [revision(group), " " + (group.revision.details || []).join("; ")])]);
+  }
+  function detail() {
+    var group = D.groups[state.group];
+    var tabs = [["files", "Files"], ["checks", "Checks (" + group.checks.length + ")"], ["overview", "Overview"], ["message", "Commit message"]];
+    var body = state.tab === "files" ? filesTab(state.group) : state.tab === "checks" ? checksTab(group)
+      : state.tab === "overview" ? overviewTab(group) : el("pre", { text: group.message });
+    return el("div", { class: "panel detail" }, [
+      el("h3", { text: "Group " + group.id + " · " + group.title }),
+      el("div", { class: "sub mono", text: group.key }),
+      el("div", { class: "tabs" }, tabs.map(function (tab) {
+        return el("button", { class: state.tab === tab[0] ? "on" : "", text: tab[1], on: { click: function () { state.tab = tab[0]; render(); } } });
+      })), body]);
+  }
+  function groupTable() {
+    var heads = ["#", "Group", "Add", "Modify", "Delete", "Rename", "Manual", "Changes", "Readiness", "Precommit", "SVN revision"];
+    return el("div", { class: "panel scroll" }, [el("table", {}, [
+      el("thead", {}, [el("tr", {}, heads.map(function (h) { return el("th", { text: h }); }))]),
+      el("tbody", { class: "pick" }, D.groups.map(function (group, index) {
+        var c = group.counts;
+        return el("tr", { class: index === state.group ? "on" : "", on: { click: function () { state.group = index; state.filter = ""; render(); } } }, [
+          el("td", { class: "mono", text: group.id }), el("td", { text: group.title }),
+          el("td", { class: "num", text: c.add }), el("td", { class: "num", text: c.modify }), el("td", { class: "num", text: c.delete }),
+          el("td", { class: "num", text: c.rename }), el("td", { class: "num", text: c.manual }), el("td", {}, [bar(c)]),
+          el("td", {}, [pill(group.readiness.status)]), el("td", {}, [pill(group.precommit ? group.precommit.status : "not run")]),
+          el("td", {}, [revision(group)])]);
+      }))])]);
+  }
+  function card(value, text) { return el("div", { class: "card" }, [el("b", { text: value }), el("span", { text: text })]); }
+  function simpleTable(heads, rows, empty) {
+    if (!rows.length) return el("div", { class: "panel empty", text: empty });
+    return el("div", { class: "panel scroll" }, [el("table", {}, [
+      el("thead", {}, [el("tr", {}, heads.map(function (h) { return el("th", { text: h }); }))]),
+      el("tbody", {}, rows.map(function (cells) { return el("tr", {}, cells.map(function (cell) { return el("td", {}, [cell]); })); }))])]);
+  }
+  function render() {
+    var app = document.getElementById("app"), run = D.run, t = D.totals;
+    app.textContent = "";
+    app.appendChild(el("h1", { text: "Git to SVN transfer · " + run.id }));
+    app.appendChild(el("div", { class: "sub" }, [run.repository + " · " + run.mode + " · branch ", el("code", { text: run.branch }), " · generated " + D.generated_at]));
+    if (run.superseded_by) app.appendChild(el("div", { class: "banner", text: "This run was superseded by " + run.superseded_by + ". Do not transfer from it." }));
+    app.appendChild(el("div", { class: "cards" }, [
+      card(D.groups.length, "groups"), card(t.add, "files added"), card(t.modify, "files modified"), card(t.delete, "files deleted"),
+      card(t.rename, "renames"), card(t.ready + "/" + D.groups.length, "groups ready"), card(t.verified + "/" + D.groups.length, "committed and verified")]));
+    app.appendChild(el("h2", { text: "Groups" }));
+    app.appendChild(groupTable());
+    if (D.groups.length) app.appendChild(detail());
+    app.appendChild(el("h2", { text: "Run" }));
+    app.appendChild(el("div", { class: "panel detail" }, [el("dl", {}, [
+      el("dt", { text: "State" }), el("dd", {}, [pill(run.state), run.worktrees_removed ? " worktrees removed by cleanup" : ""]),
+      el("dt", { text: "Base" }), el("dd", {}, [el("code", { text: run.base })]),
+      el("dt", { text: "Target" }), el("dd", {}, [el("code", { text: run.target })]),
+      el("dt", { text: "SVN baseline" }), el("dd", { text: run.svn_baseline }),
+      el("dt", { text: "Run directory" }), el("dd", {}, [el("code", { text: run.dir })]),
+      el("dt", { text: "Documents" }), el("dd", {}, [el("a", { href: "GROUPS.md", text: "GROUPS.md" }), " · ",
+        el("a", { href: "SVN_MANUAL_TRANSFER.md", text: "SVN_MANUAL_TRANSFER.md" }), " · ", el("a", { href: "manifest.json", text: "manifest.json" })])])]));
+    app.appendChild(el("h2", { text: "Last verification" + (D.verification ? " · " + D.verification.at : "") }));
+    app.appendChild(simpleTable(["Check", "Status", "Detail"], (D.verification ? D.verification.results : []).map(function (r) {
+      return [r.check, pill(r.status), r.detail || ""];
+    }), "verify has not been run."));
+    app.appendChild(el("h2", { text: "Timeline" }));
+    app.appendChild(simpleTable(["When", "Command", "Group", "Result", "Summary"], D.events.slice().reverse().map(function (e) {
+      return [el("span", { class: "nw", text: e.at }), el("code", { text: e.command }), e.group || "", pill(e.exit_code === 0 ? "passed" : e.exit_code === 1 ? "failed" : "blocked"), e.summary || ""];
+    }), "No command has been recorded yet."));
+    app.appendChild(el("h2", { text: "Warnings and items that are not transferred" }));
+    app.appendChild(el("div", { class: "panel detail" }, [el("dl", {}, [
+      el("dt", { text: "Warnings" }), el("dd", {}, [list(D.warnings, "None.")]),
+      el("dt", { text: "Manual items" }), el("dd", {}, [list(D.manual_items, "None.")]),
+      el("dt", { text: "SVN/Git differences" }), el("dd", {}, [list(D.reconcile, "None.")]),
+      el("dt", { text: "SVN-only files" }), el("dd", {}, [list(D.svn_only, "None.")]),
+      el("dt", { text: "Notes" }), el("dd", {}, [list(D.notes, "None.")])])]));
+  }
+  render();
+})();
+</script>
+</body>
+</html>
