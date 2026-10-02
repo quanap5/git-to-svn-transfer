@@ -1,7 +1,7 @@
 {
   "name": "git-to-svn-transfer",
   "description": "Prepare Git changes for a manual, group-by-group transfer into Subversion: functional groups, one checked worktree per group, delta packages, an SVN guide and verification. Never runs svn commit or git push.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "quanap5",
     "url": "https://github.com/quanap5"

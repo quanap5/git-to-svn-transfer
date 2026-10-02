@@ -93,6 +93,24 @@ What happens next:
 If a run is interrupted, ask the agent to resume the run directory; it
 continues instead of starting over.
 
+Every command reports its progress step by step on stderr: the stage, the group
+being handled and its status. The lines are coloured on a terminal and plain
+otherwise, and the JSON result on stdout is unchanged.
+
+```text
+[verify] out/20261002-120300-f9bc3dd5
+ 4/5 project checks on every cumulative worktree
+     ✓ group 01 → build  passed  12.4s
+     ✗ group 02 → test  failed  8.1s  exit 1  log out/.../checks/group-02-02-test.log
+ 5/5 readiness
+     ✓ group 01 contracts  ready
+     ✗ group 02 backend  failed  required test check 'test' failed (exit 1)
+[verify] ✗ exit 1 · 01 ready, 02 failed
+```
+
+Pass `--progress plain` for no colour or `--progress off` for no progress
+lines; `NO_COLOR` is respected.
+
 Good to know:
 
 - The source repository's branch, index and uncommitted changes are never

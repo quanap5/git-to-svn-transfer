@@ -9,6 +9,7 @@ import tempfile
 from . import SCHEMA_VERSION, TOOL_VERSION
 from . import checks as checks_mod
 from . import planning
+from . import progress
 from .common import (G2SError, inside, matches_any, now_iso, read_json, sha256_file,
                      wc_path, write_json, write_text)
 from .gitops import Git
@@ -209,6 +210,8 @@ def prepare(opts, stop_after=None):
     if opts.get("svn_wc") and inside(out, os.path.abspath(opts["svn_wc"])):
         raise G2SError("--out must be outside the SVN working copy")
     plan = read_json(opts["plan"])
+    progress.plan(5)
+    progress.step("analyse the change set and validate the plan")
     os.makedirs(out, exist_ok=True)
     scratch = tempfile.mkdtemp(prefix="g2s-", dir=out)
     try:
@@ -243,6 +246,7 @@ def prepare(opts, stop_after=None):
         run_dir = os.path.join(out, "%s-%d" % (run_id, n))
     run_id = os.path.basename(run_dir)
     os.makedirs(run_dir)
+    progress.item("%d group(s), %d check(s), run %s" % (len(groups), len(checks), run_id), "done")
     write_json(os.path.join(run_dir, "plan.json"), plan)
 
     manifest = {
@@ -333,15 +337,19 @@ def materialize(run_dir, stop_after=None):
                 % manifest["run_id"])
         _save(run_dir, manifest)
 
+    progress.step("cumulative commits on %s" % manifest["branch"])
     entries = git.ls_tree(manifest["base"]["tree"])
     parent = manifest["baseline_commit"]
     for group in manifest["groups"]:
         _apply_ops(entries, group["operations"])
-        if not (group["commit"] and git.object_exists(group["commit"])):
+        made = not (group["commit"] and git.object_exists(group["commit"]))
+        if made:
             group["tree"] = git.write_tree(entries, index)
             group["commit"] = git.commit_tree(group["tree"], parent, group["message"].rstrip("\n") + "\n")
             log.append("created commit for group %s" % group["id"])
             _save(run_dir, manifest)
+        progress.item("group %s %s" % (group["id"], group["key"]), "created" if made else "exists",
+                      "%s, %d operation(s)" % (group["commit"][:10], len(group["operations"])))
         parent = group["commit"]
     manifest["scoped_target_tree"] = git.write_tree(entries, index)
     final = manifest["groups"][-1]["commit"]
@@ -356,25 +364,31 @@ def materialize(run_dir, stop_after=None):
     if stop_after == "commits":
         return manifest
 
+    progress.step("one worktree per group")
     registered = git.worktrees()
     for group in manifest["groups"]:
         path = os.path.join(run_dir, group["worktree"])
         real = os.path.realpath(path)
         if real in registered:
+            progress.item("group %s" % group["id"], "exists", group["worktree"])
             continue
         if os.path.exists(path) and os.listdir(path):
             raise G2SError("%s exists but is not a worktree of this repository; it will not be overwritten" % path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        progress.running("group %s: checking out" % group["id"])
         git.git("worktree", "add", "--detach", path, group["commit"])
         log.append("created worktree for group %s" % group["id"])
+        progress.item("group %s" % group["id"], "created", group["worktree"])
         if stop_after == "worktree:" + group["id"]:
             _save(run_dir, manifest)
             return manifest
 
+    progress.step("delta packages and commit messages")
     for group in manifest["groups"]:
         repaired = _write_package(run_dir, git, group)
         if repaired:
             log.append("rewrote %d package file(s) for group %s" % (repaired, group["id"]))
+        progress.item("group %s" % group["id"], "done", group["package"])
         group["packaged"] = True
         _save(run_dir, manifest)
         if stop_after == "package:" + group["id"]:
@@ -385,7 +399,9 @@ def materialize(run_dir, stop_after=None):
         manifest["resume_log"].append({"at": now_iso(), "actions": log})
     manifest.setdefault("prepared_at", now_iso())
     _save(run_dir, manifest)
+    progress.step("guides")
     render_documents(run_dir, manifest)
+    progress.item("GROUPS.md, SVN_MANUAL_TRANSFER.md", "done")
     return manifest
 
 
@@ -507,16 +523,27 @@ def resume(run_dir, svn_wc=None, svn_bin=None):
     """Report drift, then finish whatever the earlier prepare did not."""
     run_dir = os.path.abspath(run_dir)
     manifest = _load(run_dir)
+    cleaned = bool((manifest.get("cleanup") or {}).get("worktrees_removed"))
+    progress.plan(1 if cleaned else 6)
+    progress.step("drift since the run was prepared")
     before = drift(run_dir, manifest, svn_wc, svn_bin)
+    for found in before:
+        progress.item("%s: %s" % (found["area"], found["detail"]), found["severity"])
+    if not before:
+        progress.item("nothing moved", "same")
     blocking = [d for d in before if d["severity"] == "changed" and d["area"] in ("worktree",)]
     if blocking:
         raise G2SError("resume refuses to continue over changed results:\n  - " + "\n  - ".join(
             d["detail"] for d in blocking) + "\nRestore those worktrees or start a new run.")
-    cleaned = bool((manifest.get("cleanup") or {}).get("worktrees_removed"))
     was, logged = manifest["state"], len(manifest["resume_log"])
     if not cleaned:
         manifest = materialize(run_dir)
+        progress.step("drift after resuming")
     after = [] if cleaned else drift(run_dir, manifest, svn_wc, svn_bin)
+    for found in after:
+        progress.item("%s: %s" % (found["area"], found["detail"]), found["severity"])
+    if not cleaned and not after:
+        progress.item("nothing moved", "same")
     actions = [a for entry in manifest["resume_log"][logged:] for a in entry["actions"]]
     if was != "prepared" and manifest["state"] == "prepared":
         actions.insert(0, "completed an interrupted prepare")
@@ -534,9 +561,13 @@ def verify(run_dir, svn_wc=None, svn_bin=None, run_checks=False, svn_final=False
     git = Git(manifest["repository"])
     results = []
 
-    def record(name, status, detail=""):
+    def record(name, status, detail="", show=True):
         results.append({"check": name, "status": status, "detail": detail})
+        if show:
+            progress.item(name, status, detail)
 
+    progress.plan(5 if run_checks else 4)
+    progress.step("structure: every operation in exactly one group")
     if manifest["state"] != "prepared":
         record("prepare completed", "failed", "state is '%s'; run resume" % manifest["state"])
         return _finish_verify(run_dir, manifest, results)
@@ -601,6 +632,7 @@ def verify(run_dir, svn_wc=None, svn_bin=None, run_checks=False, svn_final=False
                "passed" if final_tree == target_tree else "failed")
 
     # 4. Worktrees and packages are what prepare produced.
+    progress.step("worktrees and packages")
     cleaned = bool((manifest.get("cleanup") or {}).get("worktrees_removed"))
     found = drift(run_dir, manifest, svn_wc, svn_bin)
     for area in ("worktree", "package"):
@@ -623,6 +655,7 @@ def verify(run_dir, svn_wc=None, svn_bin=None, run_checks=False, svn_final=False
                                             ", ".join(r["path"] for r in manifest["reconcile"][:10])))
 
     # 6. SVN side.
+    progress.step("SVN working copy")
     wc = svn_wc or (manifest.get("svn_baseline") or {}).get("working_copy")
     if wc and os.path.isdir(wc):
         svn_bad = [d["detail"] for d in found if d["area"] == "svn" and d["severity"] != "info"]
@@ -656,6 +689,8 @@ def verify(run_dir, svn_wc=None, svn_bin=None, run_checks=False, svn_final=False
     # 7. Project checks, run on every cumulative worktree. A green build proves that
     # state runs; it does not prove the transfer is complete, which is what 1-3 are for.
     groups, checks = manifest["groups"], manifest["check_commands"]
+    if run_checks:
+        progress.step("project checks on every cumulative worktree")
     if run_checks and not cleaned:
         collected = []
         for position, group in enumerate(groups):
@@ -671,11 +706,13 @@ def verify(run_dir, svn_wc=None, svn_bin=None, run_checks=False, svn_final=False
         manifest["check_results"] = collected
     elif run_checks:
         record("project checks", "not_run", "worktrees were removed by cleanup")
+    progress.step("readiness")
     for group in groups:
         state = group["readiness"]
+        progress.item("group %s %s" % (group["id"], group["key"]), state["status"], "; ".join(state["reasons"]))
         record("group %s readiness: %s" % (group["id"], state["status"]),
                {"ready": "passed", "failed": "failed"}.get(state["status"], "not_run"),
-               "; ".join(state["reasons"]))
+               "; ".join(state["reasons"]), show=False)
     for item in manifest["check_results"]:
         if not item["required"] and item["status"] != "passed":
             record("optional check '%s' [group %s]" % (item["name"], item["group"]), "not_run",
@@ -720,6 +757,9 @@ def apply_group(run_dir, group_id, svn_wc, svn_bin=None, execute=False, allow_un
     if manifest.get("superseded_by"):
         raise G2SError("this run was superseded by %s; apply from that run" % manifest["superseded_by"])
     position, group = _group(manifest, group_id)
+    progress.plan(3)
+    progress.step("preconditions for group %s %s" % (group["id"], group["key"]))
+    progress.item("readiness on the Git worktree", group["readiness"]["status"])
     svn = _svn(manifest, svn_bin)
     snapshot = svn.snapshot(wc)
     if inside(run_dir, wc) or inside(wc, manifest["repository"]):
@@ -830,6 +870,15 @@ def apply_group(run_dir, group_id, svn_wc, svn_bin=None, execute=False, allow_un
               "next_step": "run 'precommit' for this group in the working copy before committing: checks "
                            "that passed in the Git worktree do not prove the SVN copy is the same",
               "message_file": os.path.join(run_dir, group["package"], "message.txt")}
+    progress.item("working copy at r%s matches the expected state" % snapshot["revision_max"], "passed")
+    progress.step("plan the svn operations")
+    progress.item("%d action(s): %d move, %d copy, %d add, %d delete" % (
+        len(actions), len(renames), len(copies), len(adds), len(deletes)), "done")
+    if by_hand:
+        progress.item("%d step(s) this svn client cannot do" % len(by_hand), "manual")
+    progress.step("stage in the working copy")
+    if not execute:
+        progress.item("dry run: nothing was changed; pass --execute to stage", "skipped")
     if base.get("revision") is not None and position == 0 and snapshot["revision_max"] != base["revision"]:
         report["notes"].append("working copy is at r%d, the baseline was recorded at r%d; the files this "
                                "group touches still match the baseline" % (snapshot["revision_max"], base["revision"]))
@@ -867,6 +916,7 @@ def apply_group(run_dir, group_id, svn_wc, svn_bin=None, execute=False, allow_un
         if after.get(path, {}).get("item") not in ("deleted", "replaced"):
             wrong.append("%s: not scheduled for deletion" % path)
     report["post_check"] = {"status": "failed" if wrong else "passed", "problems": wrong}
+    progress.item("staged, not committed", report["post_check"]["status"], "; ".join(wrong[:5]))
     report["staged"] = sorted("%s %s" % (s["item"], p) for p, s in after.items()
                               if s["item"] in ("added", "deleted", "modified", "replaced"))
     return report
@@ -976,8 +1026,13 @@ def precommit(run_dir, group_id, svn_wc, svn_bin=None, skip_checks=False, timeou
     snapshot = svn.snapshot(wc)
     status = snapshot["status"]
     problems, notes = [], []
+    progress.plan(4)
+
+    def stage_result(label, seen):
+        progress.item(label, "failed" if len(problems) > seen else "passed", "; ".join(problems[seen:seen + 5]))
 
     # 1. What is staged must be this group and nothing else.
+    progress.step("staged paths belong to group %s %s" % (group["id"], group["key"]))
     own = {o["path"] for o in group["operations"]}
     staged = {p: s["item"] for p, s in status.items()
               if s["item"] in planning.DIRTY_STATES or s["props"] in ("modified", "conflicted")}
@@ -989,7 +1044,11 @@ def precommit(run_dir, group_id, svn_wc, svn_bin=None, skip_checks=False, timeou
         elif path not in own and not any(p.startswith(path + "/") for p in own):
             problems.append("%s is staged (%s) but does not belong to group %s" % (path, item, group["id"]))
 
+    stage_result("%d staged path(s)" % len(staged), 0)
+
     # 2. Every path transferred so far holds the package content.
+    progress.step("transferred files match the packages")
+    seen = len(problems)
     transferred = set()
     for earlier in manifest["groups"][:position + 1]:
         for op in earlier["operations"]:
@@ -1010,7 +1069,10 @@ def precommit(run_dir, group_id, svn_wc, svn_bin=None, skip_checks=False, timeou
             elif status.get(op["path"], {}).get("item") in planning.UNTRACKED:
                 problems.append("%s is copied but not added to SVN" % op["path"])
 
+    stage_result("%d transferred path(s)" % len(transferred), seen)
+
     # 3. Everything else: is the working copy the same tree the worktree was checked on?
+    progress.step("working copy compared with the Git worktree")
     tree = git.ls_tree(group["tree"])
     outside, candidates = [], {}
     for path, (mode, kind, sha) in sorted(tree.items()):
@@ -1030,8 +1092,11 @@ def precommit(run_dir, group_id, svn_wc, svn_bin=None, skip_checks=False, timeou
         outside.append({"path": path, "difference": "line endings" if same_text else "content"})
     svn_only = [p for p in planning.versioned_files(snapshot, wc) if p not in tree and p not in transferred]
     identical = not outside and not svn_only
+    progress.item("%d difference(s) outside the transfer, %d SVN-only file(s)" % (len(outside), len(svn_only)),
+                  "same" if identical else "manual")
 
     # 4. The project's own checks, run in the working copy.
+    progress.step("project checks in the working copy")
     results, created = [], []
     expected = sum(1 for c in manifest["check_commands"]
                    if c["required"] and checks_mod.applies(c, position, manifest["groups"]))
@@ -1064,6 +1129,7 @@ def precommit(run_dir, group_id, svn_wc, svn_bin=None, skip_checks=False, timeou
         "unversioned_files_created_by_checks": created,
         "before_commit": ("Do not add or commit the files the checks created." if created else ""),
     }
+    progress.item("group %s in the working copy" % group["id"], state, "; ".join(reasons[:5]))
     group["svn_precommit"] = report
     _save(run_dir, manifest)
     render_documents(run_dir, manifest)
@@ -1080,6 +1146,8 @@ def cleanup(run_dir, execute=False, discard_untracked=False):
     registered = git.worktrees()
     area = os.path.join(run_dir, "worktrees")
     plan, refused = [], []
+    progress.plan(2)
+    progress.step("what this run created")
     for group in manifest["groups"]:
         path = os.path.join(run_dir, group["worktree"])
         real = os.path.realpath(path)
@@ -1110,7 +1178,13 @@ def cleanup(run_dir, execute=False, discard_untracked=False):
     report = {"run": run_dir, "executed": execute, "would_remove" if not execute else "removed": plan,
               "refused": refused,
               "kept": [MANIFEST, "GROUPS.md", "SVN_MANUAL_TRANSFER.md", "groups/", "plan.json"]}
+    for entry in plan:
+        progress.item("%s %s" % (entry["kind"], entry.get("group") or entry.get("name")), "exists")
+    for reason in refused:
+        progress.item(reason, "refused")
+    progress.step("remove")
     if not execute:
+        progress.item("dry run: nothing was removed; pass --execute to remove", "skipped")
         return report
     done = []
     for item in plan:
@@ -1121,8 +1195,10 @@ def cleanup(run_dir, execute=False, discard_untracked=False):
             git.git("branch", "-D", item["name"])
         else:
             report["refused"].append("branch %s kept because a worktree could not be removed" % item["name"])
+            progress.item("branch %s" % item["name"], "refused", "a worktree could not be removed")
             continue
         done.append(item)
+        progress.item("%s %s" % (item["kind"], item.get("group") or item.get("name")), "removed")
     report["removed"] = done
     remaining = [g for g in manifest["groups"]
                  if os.path.realpath(os.path.join(run_dir, g["worktree"])) in git.worktrees()]

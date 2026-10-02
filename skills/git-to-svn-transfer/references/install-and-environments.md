@@ -122,6 +122,9 @@ The tests are skipped, with the reason, when no svn client or svnadmin is found.
   output is listed; skipping the checks gives `unverified`.
 - The command line end to end, and the rendered guide having no unfilled field.
 - That no script contains a committing or pushing command.
+- Progress reporting: stderr only, plain text when stderr is not a terminal,
+  colour and `NO_COLOR` on a terminal, ASCII marks on a console that cannot
+  encode the glyphs (simulated), `--progress off`, and stdout staying valid JSON.
 
 Beyond the suite, the generated guide's by-hand commands were followed verbatim
 once against a local SVN repository, and a fresh agent completed plan, prepare,

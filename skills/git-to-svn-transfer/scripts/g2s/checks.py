@@ -9,6 +9,7 @@ import shlex
 import shutil
 import subprocess
 
+from . import progress
 from .common import G2SError, check_relpath
 
 KINDS = ("build", "test", "smoke", "lint", "other")
@@ -139,7 +140,14 @@ def run_for_state(checks, position, groups, root, log_dir, log_prefix, default_t
         if not applies(check, position, groups):
             continue
         log = os.path.join(log_dir, "%s-%02d-%s.log" % (log_prefix, number, _slug(check["name"])))
+        label = "group %s %s %s%s" % (groups[position]["id"], progress.arrow(), check["name"],
+                                      "" if check["required"] else " (optional)")
+        progress.running(label)
+        began = progress.clock()
         outcome = run_check(check, root, log, default_timeout)
+        progress.item(label, outcome["status"], "  ".join(
+            part for part in (progress.seconds(began), outcome["reason"],
+                              "" if outcome["status"] == "passed" else "log " + log) if part))
         results.append(dict(outcome, name=check["name"], kind=check["kind"], command=check["command"],
                             required=check["required"], group=groups[position]["id"], log=log))
     return results

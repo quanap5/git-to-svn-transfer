@@ -4,7 +4,7 @@ description: Prepare changes from a Git repository for a manual, group-by-group 
 license: MIT
 compatibility: Requires Python 3.8+, the git CLI and an svn CLI client. Tested on WSL2 Ubuntu 22.04 with Python 3.10, Git 2.34 and the TortoiseSVN command-line client 1.14 (svn.exe driven from WSL). Other platforms are untested.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Git to SVN transfer
@@ -16,9 +16,44 @@ that runs, and prove that nothing was lost or repeated.
 The work is split in two. **You** decide the grouping and the checks, which are
 judgements. **The script** `scripts/git_to_svn.py` does every deterministic
 step and refuses a plan that does not exactly cover the change set. Run it with
-`python3` from this skill's directory or by absolute path. It prints JSON; exit
-code 2 means a problem the user must resolve, exit code 1 means a check or a
-verification failed.
+`python3` from this skill's directory or by absolute path. It prints JSON on
+stdout; exit code 2 means a problem the user must resolve, exit code 1 means a
+check or a verification failed.
+
+## Progress
+
+Every command also prints its steps on stderr: the command, each numbered step,
+and one line per group or check with its status.
+
+```text
+[verify] <run-dir>
+ 4/5 project checks on every cumulative worktree
+     ✓ group 01 → build  passed  12.4s
+     ✗ group 02 → test  failed  8.1s  exit 1  log <run-dir>/checks/group-02-02-test.log
+ 5/5 readiness
+     ✓ group 01 contracts  ready
+     ✗ group 02 backend  failed  required test check 'test' failed (exit 1)
+[verify] ✗ exit 1 · 01 ready, 02 failed
+```
+
+- `--progress auto` (default) colours the lines on a terminal and keeps them
+  plain otherwise; `plain` never colours; `off` prints none. `NO_COLOR` is
+  respected.
+- Parse stdout only. Do not merge stderr into it (`2>&1`) when you read the
+  JSON; the progress lines are for people.
+- The user does not see a command's output while you run it. After each command,
+  show them where the transfer stands with a short status board built from the
+  JSON, and mark the current stage:
+
+  | Stage | Group | Status |
+  |---|---|---|
+  | prepare | all | done |
+  | verify | 01 contracts | ready |
+  | verify | 02 backend | failed: test check, see the log |
+  | apply → precommit → commit → record | 01 contracts | next |
+
+  Use the script's own status words (`ready`, `failed`, `blocked`, `unverified`,
+  `verified`, `mismatch`, `not_run`) unchanged.
 
 ## Boundaries
 

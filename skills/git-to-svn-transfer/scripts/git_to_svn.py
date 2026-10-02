@@ -3,7 +3,7 @@
 
 Never runs 'svn commit' or 'git push'. Results are printed as JSON on stdout;
 problems the user must resolve go to stderr with exit code 2. Exit code 1 means
-a verification failed.
+a verification failed. Step-by-step progress goes to stderr (see --progress).
 """
 import argparse
 import json
@@ -14,7 +14,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from g2s import TOOL_VERSION, planning, transfer  # noqa: E402
+from g2s import TOOL_VERSION, planning, progress, transfer  # noqa: E402
 from g2s import checks as checks_mod  # noqa: E402
 from g2s.common import G2SError, read_json  # noqa: E402
 
@@ -119,7 +119,28 @@ def build_parser():
     p.add_argument("--execute", action="store_true")
     p.add_argument("--discard-untracked", action="store_true",
                    help="also remove worktrees whose only differences are untracked files, such as check output")
+    for command in sub.choices.values():
+        command.add_argument("--progress", choices=("auto", "plain", "off"), default="auto",
+                             help="progress lines on stderr: 'auto' colours them on a terminal and keeps them "
+                                  "plain otherwise, 'plain' never colours, 'off' prints none (default: auto)")
     return parser
+
+
+def _summary(command, result):
+    """One line for the closing progress message."""
+    if command == "verify":
+        return ", ".join("%s %s" % pair for pair in sorted(result["readiness"].items()))
+    if command in ("precommit", "record"):
+        return "group %s %s" % (result["group"], result["status"])
+    if command == "apply":
+        return "group %s %s" % (result["group"], "staged, not committed" if result["executed"] else "dry run")
+    if command == "prepare":
+        return result["run"]
+    if command in ("inspect", "plan"):
+        return "ready to prepare" if result["ready_to_prepare"] else "%d blocker(s)" % len(result["blockers"])
+    if command == "resume":
+        return "state %s" % result["state"]
+    return "removed" if result["executed"] else "dry run"
 
 
 def _plan_report(opts):
@@ -155,6 +176,8 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     opts = vars(args)
     code = 0
+    progress.configure(args.progress)
+    progress.start(args.command, opts.get("run") or opts.get("repo") or "")
     try:
         if args.command == "inspect":
             result = transfer.inspect(opts)
@@ -197,8 +220,10 @@ def main(argv=None):
         else:
             result = transfer.cleanup(args.run, args.execute, args.discard_untracked)
     except G2SError as exc:
+        progress.finish(2, "stopped")
         sys.stderr.write("error: %s\n" % exc)
         return 2
+    progress.finish(code, _summary(args.command, result))
     json.dump(result, sys.stdout, indent=1, ensure_ascii=False)
     sys.stdout.write("\n")
     return code
