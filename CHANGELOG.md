@@ -15,6 +15,9 @@ The version is the one in `.claude-plugin/plugin.json`, which is also what
 
 ### Changed
 
+- The dashboard shows times in the viewer's local time zone, named in the
+  timeline header (for example `UTC+09:00`). `events.jsonl` and the manifest
+  still store UTC; hovering a time shows the stored UTC value.
 - The README's dashboard section is now a usage guide: how to open the page,
   what each part shows, how to rebuild it, and its limits.
 

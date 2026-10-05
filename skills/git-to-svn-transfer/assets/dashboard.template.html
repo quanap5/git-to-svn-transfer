@@ -101,6 +101,21 @@ dt { color: var(--mute); } dd { margin: 0; overflow-wrap: anywhere; }
   function kind(status) {
     return GOOD.indexOf(status) >= 0 ? "good" : BAD.indexOf(status) >= 0 ? "bad" : WARN.indexOf(status) >= 0 ? "warn" : "neutral";
   }
+  // Times are stored in UTC and shown in the viewer's local time zone.
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function zone(date) {
+    var offset = -date.getTimezoneOffset(), sign = offset < 0 ? "-" : "+";
+    offset = Math.abs(offset);
+    return "UTC" + sign + pad(Math.floor(offset / 60)) + ":" + pad(offset % 60);
+  }
+  function local(iso) {
+    var date = new Date(iso);
+    if (!iso || isNaN(date.getTime())) return iso || "";
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) + " " +
+      pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
+  }
+  function when(iso) { return el("span", { class: "nw", title: iso + " (UTC)", text: local(iso) }); }
+  var ZONE = zone(new Date());
   function pill(status) { return el("span", { class: "pill " + kind(status), text: String(status || "not run").replace(/_/g, " ") }); }
   function list(items, empty) {
     if (!items || !items.length) return el("div", { class: "empty", text: empty });
@@ -253,7 +268,7 @@ dt { color: var(--mute); } dd { margin: 0; overflow-wrap: anywhere; }
     var app = document.getElementById("app"), run = D.run, t = D.totals;
     app.textContent = "";
     app.appendChild(el("h1", { text: "Git to SVN transfer · " + run.id }));
-    app.appendChild(el("div", { class: "sub" }, [run.repository + " · " + run.mode + " · branch ", el("code", { text: run.branch }), " · generated " + D.generated_at]));
+    app.appendChild(el("div", { class: "sub" }, [run.repository + " · " + run.mode + " · branch ", el("code", { text: run.branch }), " · generated ", when(D.generated_at), " " + ZONE]));
     if (run.superseded_by) app.appendChild(el("div", { class: "banner", text: "This run was superseded by " + run.superseded_by + ". Do not transfer from it." }));
     app.appendChild(el("div", { class: "cards" }, [
       card(D.groups.length, "groups"), card(t.add, "files added"), card(t.modify, "files modified"), card(t.delete, "files deleted"),
@@ -270,13 +285,13 @@ dt { color: var(--mute); } dd { margin: 0; overflow-wrap: anywhere; }
       el("dt", { text: "Run directory" }), el("dd", {}, [el("code", { text: run.dir })]),
       el("dt", { text: "Documents" }), el("dd", {}, [el("a", { href: "GROUPS.md", text: "GROUPS.md" }), " · ",
         el("a", { href: "SVN_MANUAL_TRANSFER.md", text: "SVN_MANUAL_TRANSFER.md" }), " · ", el("a", { href: "manifest.json", text: "manifest.json" })])])]));
-    app.appendChild(el("h2", { text: "Last verification" + (D.verification ? " · " + D.verification.at : "") }));
+    app.appendChild(el("h2", { text: "Last verification" + (D.verification ? " · " + local(D.verification.at) + " " + ZONE : "") }));
     app.appendChild(simpleTable(["Check", "Status", "Detail"], (D.verification ? D.verification.results : []).map(function (r) {
       return [r.check, pill(r.status), r.detail || ""];
     }), "verify has not been run."));
     app.appendChild(el("h2", { text: "Timeline" }));
-    app.appendChild(simpleTable(["When", "Command", "Group", "Result", "Summary"], D.events.slice().reverse().map(function (e) {
-      return [el("span", { class: "nw", text: e.at }), el("code", { text: e.command }), e.group || "", pill(e.exit_code === 0 ? "passed" : e.exit_code === 1 ? "failed" : "blocked"), e.summary || ""];
+    app.appendChild(simpleTable(["When (" + ZONE + ")", "Command", "Group", "Result", "Summary"], D.events.slice().reverse().map(function (e) {
+      return [when(e.at), el("code", { text: e.command }), e.group || "", pill(e.exit_code === 0 ? "passed" : e.exit_code === 1 ? "failed" : "blocked"), e.summary || ""];
     }), "No command has been recorded yet."));
     app.appendChild(el("h2", { text: "Warnings and items that are not transferred" }));
     app.appendChild(el("div", { class: "panel detail" }, [el("dl", {}, [

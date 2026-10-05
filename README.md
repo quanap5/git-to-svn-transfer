@@ -138,7 +138,7 @@ explorer.exe "$(wslpath -w <run-dir>/dashboard.html)"
 | Checks tab | Every check run for the group, on its Git worktree and in the SVN working copy, with its status and a link to its log. |
 | Overview and Commit message tabs | Rationale, dependencies, commit, worktree and package paths, and the text to use for `svn commit`. |
 | Last verification | The result of the latest `verify`, check by check. |
-| Timeline | The commands run on this run, newest first, with their time, group and result. It is read from `events.jsonl`, which gets one line per command. |
+| Timeline | The commands run on this run, newest first, with their time, group and result. Times are shown in your local time zone, named in the column header; `events.jsonl`, which gets one line per command, stores them in UTC. |
 | Warnings and items that are not transferred | Warnings, manual items, differences between SVN and Git, SVN-only files and notes. |
 
 **Rebuild it**, for example for a run created by an earlier version or after
