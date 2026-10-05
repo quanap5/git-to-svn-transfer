@@ -4,7 +4,7 @@ description: Prepare changes from a Git repository for a manual, group-by-group 
 license: MIT
 compatibility: Requires Python 3.8+, the git CLI and an svn CLI client. Tested on WSL2 Ubuntu 22.04 with Python 3.10, Git 2.34 and the TortoiseSVN command-line client 1.14 (svn.exe driven from WSL). Other platforms are untested.
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # Git to SVN transfer

@@ -9,6 +9,8 @@ The version is the one in `.claude-plugin/plugin.json`, which is also what
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-05
+
 ### Added
 
 - This changelog.
@@ -83,7 +85,8 @@ First public release, as a Claude Code plugin that is also its own marketplace.
   Installed as a plugin, it is invoked as
   `/git-to-svn-transfer:git-to-svn-transfer`.
 
-[Unreleased]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/quanap5/git-to-svn-transfer/releases/tag/v1.1.0
