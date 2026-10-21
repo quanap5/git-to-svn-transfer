@@ -10,11 +10,11 @@ The repository is a plugin and its own marketplace. In Claude Code:
 
 ```text
 /plugin marketplace add quanap5/git-to-svn-transfer
-/plugin install git-to-svn-transfer@git-to-svn-transfer
+/plugin install g2skit@g2skit
 ```
 
 The install scope (user, project or local) is chosen at install time. The skill
-is then invoked as `/git-to-svn-transfer:git-to-svn-transfer`. To try a local
+is then invoked as `/g2skit:git-to-svn-transfer`. To try a local
 clone without installing it, start Claude Code with
 `claude --plugin-dir /path/to/clone`.
 

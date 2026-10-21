@@ -1,5 +1,5 @@
 {
-  "name": "git-to-svn-transfer",
+  "name": "g2skit",
   "description": "Prepare Git changes for a manual, group-by-group transfer into Subversion: functional groups, one checked worktree per group, delta packages, an SVN guide and verification. Never runs svn commit or git push.",
   "version": "1.4.0",
   "author": {

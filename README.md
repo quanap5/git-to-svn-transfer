@@ -30,17 +30,17 @@ In Claude Code, add this repository as a marketplace and install the plugin:
 
 ```text
 /plugin marketplace add quanap5/git-to-svn-transfer
-/plugin install git-to-svn-transfer@git-to-svn-transfer
+/plugin install g2skit@g2skit
 ```
 
 The same from a shell:
 
 ```bash
 claude plugin marketplace add quanap5/git-to-svn-transfer
-claude plugin install git-to-svn-transfer@git-to-svn-transfer
+claude plugin install g2skit@g2skit
 ```
 
-Update later with `/plugin marketplace update git-to-svn-transfer`. A new
+Update later with `/plugin marketplace update g2skit`. A new
 version is picked up when `version` in
 [.claude-plugin/plugin.json](.claude-plugin/plugin.json) changes.
 
@@ -59,7 +59,7 @@ Open Claude Code in the Git repository you want to transfer. Ask in your own
 words, or call the skill by name:
 
 ```text
-/git-to-svn-transfer:git-to-svn-transfer transfer the commits from <base> to HEAD into the SVN working copy at D:\svn\myproject, in about 5 groups
+/g2skit:git-to-svn-transfer transfer the commits from <base> to HEAD into the SVN working copy at D:\svn\myproject, in about 5 groups
 ```
 
 Tell the agent three things:
@@ -99,7 +99,7 @@ The plugin has a second skill for the SVN side. After a run is prepared and
 verified, call it and it walks you through one group at a time:
 
 ```text
-/git-to-svn-transfer:what-next
+/g2skit:what-next
 ```
 
 It tells you which group is next and gives that group's exact commands: copy

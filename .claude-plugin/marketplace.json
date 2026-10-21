@@ -1,15 +1,15 @@
 {
-  "name": "git-to-svn-transfer",
+  "name": "g2skit",
   "owner": {
     "name": "quanap5",
     "url": "https://github.com/quanap5"
   },
   "metadata": {
-    "description": "Marketplace for the git-to-svn-transfer plugin."
+    "description": "Marketplace for the g2skit plugin, which transfers Git changes into SVN."
   },
   "plugins": [
     {
-      "name": "git-to-svn-transfer",
+      "name": "g2skit",
       "source": "./",
       "description": "Prepare Git changes for a manual, group-by-group transfer into Subversion. Never runs svn commit or git push.",
       "category": "development"
