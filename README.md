@@ -93,6 +93,27 @@ What happens next:
 If a run is interrupted, ask the agent to resume the run directory; it
 continues instead of starting over.
 
+### Not sure what to do next?
+
+The plugin has a second skill for the SVN side. After a run is prepared and
+verified, call it and it walks you through one group at a time:
+
+```text
+/git-to-svn-transfer:what-next
+```
+
+It tells you which group is next and gives that group's exact commands: copy
+from `payload/`, `svn move` for renames, `svn add` and `svn delete`, properties,
+then `svn commit`. You run those. The agent runs the read-only checks,
+`precommit` before you commit and `record` after, then moves to the next group.
+It never copies files into the working copy and never commits.
+
+Without an agent, the same answer comes from:
+
+```bash
+python3 skills/git-to-svn-transfer/scripts/git_to_svn.py next --run <run-dir>
+```
+
 Every command reports its progress step by step on stderr: the stage, the group
 being handled and its status. The lines are coloured on a terminal and plain
 otherwise, and the JSON result on stdout is unchanged.
@@ -179,7 +200,7 @@ python3 skills/git-to-svn-transfer/scripts/git_to_svn.py inspect --repo <repo> -
 ```
 
 The subcommands are `inspect`, `plan`, `prepare`, `verify`, `resume`, `apply`,
-`precommit`, `record`, `cleanup` and `report`. You write the plan file yourself; its
+`precommit`, `record`, `cleanup`, `report` and `next`. You write the plan file yourself; its
 format is in
 [plan-format.md](skills/git-to-svn-transfer/references/plan-format.md).
 
@@ -194,6 +215,8 @@ skills/git-to-svn-transfer/
   scripts/                  the transfer tool, plain Python
   references/               detail the agent loads when needed
   assets/                   plan and guide templates
+skills/what-next/
+  SKILL.md                  walks the user through the SVN side of a prepared run
 tests/                      test suite; not part of the skill
 assets/                     README banner and its motion-graphic source
 ```
@@ -201,6 +224,7 @@ assets/                     README banner and its motion-graphic source
 ## Documentation
 
 - [SKILL.md](skills/git-to-svn-transfer/SKILL.md): modes, boundaries and the workflow
+- [what-next/SKILL.md](skills/what-next/SKILL.md): the step-by-step guide for the SVN side
 - [grouping.md](skills/git-to-svn-transfer/references/grouping.md): choosing groups
 - [checks.md](skills/git-to-svn-transfer/references/checks.md): checks and readiness
 - [plan-format.md](skills/git-to-svn-transfer/references/plan-format.md): the plan file

@@ -45,6 +45,13 @@ wherever a file is handed to svn.
 The commands below are for a POSIX shell (Linux, macOS, WSL, Git Bash). A
 TortoiseSVN route is given at the end of the steps.
 
+Lost track? This prints which group and which step come next, with that
+group's commands. It only reads the run:
+
+```bash
+python3 "$$TOOL" next --run "$$RUN"
+```
+
 ## Steps for every group
 
 Set the group number, then follow the seven steps.

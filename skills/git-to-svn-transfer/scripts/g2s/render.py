@@ -85,6 +85,13 @@ def _mode_text(manifest):
     }[manifest["mode"]]
 
 
+def native_function(client):
+    """Shell function that turns a path into the form the run's svn client understands."""
+    if (client or {}).get("windows_client_under_posix"):
+        return 'native() { wslpath -w "$1"; }   # this svn client is a Windows program run from WSL'
+    return 'native() { printf %s "$1"; }    # with a Windows svn.exe under WSL use: wslpath -w "$1"'
+
+
 def render_documents(run_dir, manifest):
     common = {
         "run_id": manifest["run_id"], "run_dir": run_dir, "mode": _mode_text(manifest),
@@ -102,9 +109,7 @@ def render_documents(run_dir, manifest):
     baseline = manifest.get("svn_baseline") or {}
     common["svn_bin"] = client.get("binary") or "svn"
     common["svn_wc"] = baseline.get("working_copy") or "/path/to/dedicated/svn/working-copy"
-    common["native_fn"] = ('native() { wslpath -w "$1"; }   # this svn client is a Windows program run from WSL'
-                           if client.get("windows_client_under_posix") else
-                           'native() { printf %s "$1"; }    # with a Windows svn.exe under WSL use: wslpath -w "$1"')
+    common["native_fn"] = native_function(client)
     common["baseline_revision"] = ("r%s" % baseline["revision"]) if baseline.get("revision") is not None \
         else "the baseline revision"
     ids = {g["key"]: g["id"] for g in manifest["groups"]}

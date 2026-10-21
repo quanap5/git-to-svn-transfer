@@ -9,6 +9,18 @@ The version is the one in `.claude-plugin/plugin.json`, which is also what
 
 ## [Unreleased]
 
+### Added
+
+- The `what-next` skill: walks the user through the SVN side of a prepared run,
+  one group and one step at a time, with that group's real commands. It runs
+  the read-only checks, `precommit` and `record` itself, and leaves copying,
+  scheduling and `svn commit` to the user.
+- `git_to_svn.py next --run <dir>`: reads the manifest and says where the run
+  stands (`verify`, `stage`, `commit`, `final_verify`, `cleanup` and others),
+  which group is next, who runs each step, and the exact commands, keeping only
+  the steps the group needs. It runs no git or svn command and adds no event.
+- `SVN_MANUAL_TRANSFER.md` points to `next` for users who lose track.
+
 ## [1.3.1] - 2026-10-05
 
 ### Added

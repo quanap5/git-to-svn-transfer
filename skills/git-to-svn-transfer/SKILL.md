@@ -260,7 +260,16 @@ transfer twice is refused and points here.
 
 ## The SVN side: apply, precommit, commit, record
 
-The user follows `SVN_MANUAL_TRANSFER.md`. Per group, in order:
+The user follows `SVN_MANUAL_TRANSFER.md`, or is walked through it by the
+sibling skill `what-next`. To learn where a run stands and which step comes
+next, with that group's real commands, ask the tool. It only reads the
+manifest:
+
+```bash
+python3 scripts/git_to_svn.py next --run <run-dir> [--svn-wc <dir>]
+```
+
+Per group, in order:
 
 1. **Stage.** `apply` copies the package and schedules adds, deletes, moves and
    properties. It is a dry run until `--execute`, never commits, and refuses a
