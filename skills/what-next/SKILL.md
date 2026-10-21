@@ -4,7 +4,7 @@ description: Guide the user, one step at a time, through committing a prepared g
 license: MIT
 compatibility: Needs the git-to-svn-transfer skill installed next to this one (it runs that skill's scripts/git_to_svn.py), Python 3.8+, git and an svn command-line client.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # What next

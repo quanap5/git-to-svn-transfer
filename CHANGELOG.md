@@ -9,6 +9,27 @@ The version is the one in `.claude-plugin/plugin.json`, which is also what
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-21
+
+### Changed
+
+- The plugin and its marketplace are now named `g2skit`, so the skills are
+  invoked as `/g2skit:git-to-svn-transfer` and `/g2skit:what-next`, and the
+  plugin installs with `/plugin install g2skit@g2skit`. The repository, the
+  skill names and everything a run produces keep their names.
+
+### Upgrading
+
+An installation of an earlier version does not move to the new name by itself.
+Remove it and install again:
+
+```text
+/plugin uninstall git-to-svn-transfer@git-to-svn-transfer
+/plugin marketplace remove git-to-svn-transfer
+/plugin marketplace add quanap5/git-to-svn-transfer
+/plugin install g2skit@g2skit
+```
+
 ## [1.4.0] - 2026-10-21
 
 ### Added
@@ -99,7 +120,8 @@ First public release, as a Claude Code plugin that is also its own marketplace.
   Installed as a plugin, it is invoked as
   `/git-to-svn-transfer:git-to-svn-transfer`.
 
-[Unreleased]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.2.0...v1.3.0
