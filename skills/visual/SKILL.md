@@ -4,7 +4,7 @@ description: Draw an SVN repository's history as a git-style graph in one self-c
 license: MIT
 compatibility: Needs the git-to-svn-transfer skill installed next to this one (it runs that skill's scripts/git_to_svn.py), Python 3.8+ and an svn command-line client.
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Visual
