@@ -100,6 +100,24 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(data["counts"], {"revisions": 8, "lanes": 3, "forks": 2, "merges": 1})
         self.assertFalse(data["truncated"])
 
+    def test_an_idle_branch_does_not_widen_the_graph_and_a_recreated_one_is_open(self):
+        history = [
+            entry(1, path("/trunk/a", "A")),
+            entry(2, path("/branches/old", "A", "dir", ("/trunk", 1))),
+            entry(3, path("/branches/old/a")),
+            entry(4, path("/branches/redo", "A", "dir", ("/trunk", 1))),
+            entry(5, path("/branches/redo", "D", "dir")),
+            entry(6, path("/branches/redo", "A", "dir", ("/trunk", 1))),
+            entry(7, path("/trunk/a")),
+            entry(8, path("/branches/new", "A", "dir", ("/trunk", 7))),
+            entry(9, path("/branches/new/a")),
+        ]
+        lanes = {l["id"]: l for l in svngraph.build(REPO, history)["lanes"]}
+        self.assertEqual(lanes["/trunk"]["column"], 0)
+        self.assertEqual(lanes["/branches/new"]["column"], 1,
+                         "'old' was never deleted but its last revision is r3, so its column is free again")
+        self.assertIsNone(lanes["/branches/redo"]["closed"], "deleted in r5 but recreated in r6")
+
     def test_a_fork_from_outside_the_window_is_marked(self):
         data = svngraph.build(REPO, [entry(40, path("/branches/old", "A", "dir", ("/trunk", 12))),
                                      entry(41, path("/trunk/x"))], None, limit=2)

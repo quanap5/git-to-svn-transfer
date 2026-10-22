@@ -84,12 +84,13 @@ def _place(entry):
 
 
 def _columns(lanes, newest):
-    """Lowest free column per lane, trunk first. A lane that is still alive holds its column up to the
-    newest shown revision; a tag is a snapshot and holds only its own revisions. Lanes whose spans do
+    """Lowest free column per lane, trunk first. Trunk holds its column up to the newest shown
+    revision; a branch or tag holds it only between its first and last revision, as git log --graph
+    does, so a branch nobody deleted but nobody uses does not widen the graph. Lanes whose spans do
     not overlap share a column."""
     taken = []
     for lane in sorted(lanes, key=lambda l: (KIND_ORDER[l["kind"]], l["first"], l["id"])):
-        end = lane["last"] if lane["kind"] == "tag" or lane["closed"] else newest
+        end = newest if lane["kind"] in ("trunk", "root") else lane["last"]
         column = 0
         while any(c == column and not (e < lane["first"] or f > end) for c, f, e in taken):
             column += 1
@@ -155,8 +156,10 @@ def build(repository, entries, mergeinfo=None, limit=None):
                                        "source_path": source, "outside": found is None}
     edges += [merges[key] for key in sorted(merges, key=lambda k: (-k[1], k[0]))]
 
+    # A lane is closed only when its deletion is its last event; a deleted and recreated branch lives on.
     lanes = [{"id": lane, "label": lane.lstrip("/") or "/", "kind": kind_of(lane), "first": min(revs),
-              "last": max(revs), "closed": closed.get(lane), "revisions": len(revs)}
+              "last": max(revs), "closed": closed.get(lane) if closed.get(lane, 0) >= max(revs) else None,
+              "revisions": len(revs)}
              for lane, revs in lane_revs.items()]
     _columns(lanes, entries[0]["revision"] if entries else 0)
     column = {lane["id"]: lane["column"] for lane in lanes}
