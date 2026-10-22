@@ -14,7 +14,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from g2s import TOOL_VERSION, dashboard, nextstep, planning, progress, transfer  # noqa: E402
+from g2s import TOOL_VERSION, dashboard, nextstep, planning, progress, svngraph, transfer  # noqa: E402
 from g2s import checks as checks_mod  # noqa: E402
 from g2s.common import G2SError, read_json  # noqa: E402
 
@@ -125,6 +125,13 @@ def build_parser():
     p.add_argument("--run", required=True)
     p.add_argument("--svn-wc", help="SVN working copy (default: the one the run was prepared with)")
     p.add_argument("--svn-bin")
+    p = sub.add_parser("graph", help="draw an SVN repository's history as a graph in one HTML file (read-only)")
+    source = p.add_mutually_exclusive_group(required=True)
+    source.add_argument("--svn-wc", help="a working copy of the repository")
+    source.add_argument("--url", help="any URL inside the repository")
+    p.add_argument("--out", required=True, help="HTML file to write, outside any SVN working copy")
+    p.add_argument("--limit", type=int, default=300, help="newest revisions to draw (default: 300)")
+    p.add_argument("--svn-bin")
 
     for command in sub.choices.values():
         command.add_argument("--progress", choices=("auto", "plain", "off"), default="auto",
@@ -161,6 +168,9 @@ def _summary(command, result):
         return "state %s" % result["state"]
     if command == "report":
         return result["dashboard"]
+    if command == "graph":
+        return "%d revisions, %d lanes, %d forks, %d merges" % (
+            result["revisions"], result["lanes"], result["forks"], result["merges"])
     if command == "next":
         return result["stage"] + (" group %s" % result["group"]["id"] if result["group"] else "")
     return "removed" if result["executed"] else "dry run"
@@ -246,6 +256,8 @@ def main(argv=None):
             result = {"dashboard": dashboard.write(args.run)}
         elif args.command == "next":
             result = nextstep.next_step(args.run, args.svn_wc, args.svn_bin)
+        elif args.command == "graph":
+            result = svngraph.graph(args.svn_wc, args.url, args.out, args.limit, args.svn_bin)
         else:
             result = transfer.cleanup(args.run, args.execute, args.discard_untracked)
     except G2SError as exc:
@@ -254,7 +266,7 @@ def main(argv=None):
         sys.stderr.write("error: %s\n" % exc)
         return 2
     summary = _summary(args.command, result)
-    if args.command not in ("report", "next"):
+    if args.command not in ("report", "next", "graph"):
         written = _record(args.command, result["run"] if args.command == "prepare" else opts.get("run"), code,
                           "run prepared" if args.command == "prepare" else summary, opts.get("group"))
         if args.command == "prepare":

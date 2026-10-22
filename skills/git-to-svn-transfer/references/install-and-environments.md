@@ -22,8 +22,9 @@ clone without installing it, start Claude Code with
 
 The skill is the self-contained directory `skills/git-to-svn-transfer/` of the
 repository. The optional `skills/what-next/` guides the user through the SVN
-side of a prepared run; it runs the scripts of `git-to-svn-transfer`, so install
-it next to that directory, never alone. Copy or symlink each directory, keeping
+side of a prepared run, and the optional `skills/visual/` draws an SVN
+repository's history as a graph. Both run the scripts of `git-to-svn-transfer`,
+so install them next to that directory, never alone. Copy or symlink each directory, keeping
 its name:
 
 | Scope | Location | Use when |

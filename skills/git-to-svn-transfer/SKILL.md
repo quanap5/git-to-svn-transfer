@@ -269,6 +269,13 @@ manifest:
 python3 scripts/git_to_svn.py next --run <run-dir> [--svn-wc <dir>]
 ```
 
+To see the SVN repository's history, with branches, tags and merges, as a
+graph in one HTML page (the sibling skill `visual`):
+
+```bash
+python3 scripts/git_to_svn.py graph --svn-wc <dir> --out <file.html>
+```
+
 Per group, in order:
 
 1. **Stage.** `apply` copies the package and schedules adds, deletes, moves and

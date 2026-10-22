@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVN history graph</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2330; --mute: #667085; --line: #dfe3ea; --accent: #2f5fe0;
+  --good: #1a7f47; --bad: #c8321e; --warn: #9a6500; --merge: #7a3fc4;
+  --good-bg: #e3f4ea; --bad-bg: #fbe6e2; --warn-bg: #fbf0d9; --neutral-bg: #eceff3; --accent-bg: #e4ebfd;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10131a; --panel: #171b24; --ink: #e8ecef; --mute: #8b93a0; --line: #2f3540; --accent: #6f93f5;
+    --good: #4cc27f; --bad: #f07a5f; --warn: #d9a13f; --merge: #c08df0;
+    --good-bg: #173524; --bad-bg: #3d1e18; --warn-bg: #3a2c12; --neutral-bg: #232934; --accent-bg: #1c2a4d;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+code, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+main { max-width: 1440px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--mute); overflow-wrap: anywhere; }
+.note { margin-top: 8px; padding: 8px 12px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); }
+.tools { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 16px 0 8px; color: var(--mute); }
+.tools input[type=search] { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); min-width: 240px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; }
+.legend svg { vertical-align: middle; margin-right: 4px; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); gap: 16px; align-items: start; }
+@media (max-width: 960px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.graph { position: relative; overflow-x: auto; }
+.graph svg.lines { position: absolute; left: 0; top: 0; pointer-events: none; }
+.row { height: 30px; display: flex; align-items: center; gap: 10px; padding-right: 12px; cursor: pointer; white-space: nowrap; border-bottom: 1px solid transparent; }
+.row:hover { background: var(--neutral-bg); }
+.row.on { background: var(--accent-bg); }
+.row.dim { opacity: .3; }
+.rev { color: var(--mute); min-width: 4.5em; font-variant-numeric: tabular-nums; }
+.msg { flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.who, .date { color: var(--mute); font-size: 12px; }
+.pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.details { position: sticky; top: 12px; padding: 16px; max-height: calc(100vh - 24px); overflow: auto; }
+.details h2 { margin: 0 0 4px; font-size: 16px; }
+pre { margin: 8px 0 0; padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: auto; white-space: pre-wrap; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
+dt { color: var(--mute); } dd { margin: 0; overflow-wrap: anywhere; }
+h3 { font-size: 13px; margin: 16px 0 6px; color: var(--mute); }
+table { border-collapse: collapse; width: 100%; }
+td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+tr:last-child td { border-bottom: 0; }
+.act { font-weight: 700; width: 1.5em; }
+.A { color: var(--good); } .M { color: var(--accent); } .D { color: var(--bad); } .R { color: var(--merge); }
+.flag { color: var(--mute); font-size: 12px; white-space: nowrap; }
+.empty { color: var(--mute); padding: 12px; }
+ul.plain { margin: 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script type="application/json" id="data">__G2S_DATA__</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var ROW = 30, COL = 18, PAD = 16, SVG = "http://www.w3.org/2000/svg";
+  var COLORS = ["#2f6fdf", "#d9480f", "#2b8a3e", "#ae3ec9", "#c2255c", "#1098ad", "#e8590c", "#5c940d", "#7048e8"];
+  var ACTIONS = { A: "added", M: "modified", D: "deleted", R: "replaced" };
+  var state = { selected: null, filter: "", hideTags: false };
+
+  var lanes = {};
+  D.lanes.forEach(function (lane, i) {
+    lane.color = lane.kind === "trunk" || lane.kind === "root" ? COLORS[0] : COLORS[1 + (i % (COLORS.length - 1))];
+    lanes[lane.id] = lane;
+  });
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      if (key === "text") node.textContent = attrs[key];
+      else if (key === "on") Object.keys(attrs.on).forEach(function (name) { node.addEventListener(name, attrs.on[name]); });
+      else node.setAttribute(key, attrs[key]);
+    });
+    (children || []).forEach(function (child) { if (child) node.appendChild(typeof child === "string" ? document.createTextNode(child) : child); });
+    return node;
+  }
+  function svg(tag, attrs) {
+    var node = document.createElementNS(SVG, tag);
+    Object.keys(attrs).forEach(function (key) { node.setAttribute(key, attrs[key]); });
+    return node;
+  }
+  // Dates are stored in UTC and shown in the viewer's local time zone.
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function zone(date) {
+    var offset = -date.getTimezoneOffset(), sign = offset < 0 ? "-" : "+";
+    offset = Math.abs(offset);
+    return "UTC" + sign + pad(Math.floor(offset / 60)) + ":" + pad(offset % 60);
+  }
+  function local(iso) {
+    var date = new Date(iso);
+    if (!iso || isNaN(date.getTime())) return iso || "";
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) + " " +
+      pad(date.getHours()) + ":" + pad(date.getMinutes());
+  }
+  var ZONE = zone(new Date());
+  function firstLine(text) { return (text || "").split("\n")[0] || "(no message)"; }
+  function lanePill(id) {
+    var lane = lanes[id];
+    return el("span", { class: "pill", style: "color:" + lane.color, title: id, text: lane.label });
+  }
+  function matches(rev, text) {
+    if (!text) return true;
+    var hay = [String(rev.rev), "r" + rev.rev, rev.author, rev.message, lanes[rev.lane].label]
+      .concat(rev.paths.map(function (p) { return p.path; })).join("\n").toLowerCase();
+    return hay.indexOf(text) >= 0;
+  }
+
+  function header() {
+    var shown = D.shown ? "r" + D.shown.newest + " to r" + D.shown.oldest : "no revisions";
+    var nodes = [
+      el("h1", { text: "SVN history" }),
+      el("div", { class: "sub mono", text: D.repository.root }),
+      el("div", { class: "sub", text: "Head r" + D.repository.head + " · showing " + D.counts.revisions +
+        " revision(s), " + shown + " · " + D.counts.lanes + " lane(s), " + D.counts.forks + " fork(s), " +
+        D.counts.merges + " merge(s) · times in " + ZONE })
+    ];
+    D.notes.forEach(function (note) { nodes.push(el("div", { class: "note", text: note })); });
+    return nodes;
+  }
+
+  function legendIcon(dashed, color) {
+    var icon = svg("svg", { width: 22, height: 10 });
+    icon.appendChild(svg("line", { x1: 1, y1: 5, x2: 21, y2: 5, stroke: color, "stroke-width": 2,
+      "stroke-dasharray": dashed ? "4 3" : "" }));
+    return icon;
+  }
+
+  function tools() {
+    var search = el("input", { type: "search", placeholder: "Filter: message, author, path, r123" });
+    search.value = state.filter;
+    search.addEventListener("input", function () { state.filter = search.value.trim().toLowerCase(); draw(); });
+    var box = el("input", { type: "checkbox" });
+    box.checked = state.hideTags;
+    box.addEventListener("change", function () { state.hideTags = box.checked; draw(); });
+    var legend = el("span", { class: "legend" }, [
+      el("span", {}, [legendIcon(false, "var(--mute)"), "lane / fork"]),
+      el("span", {}, [legendIcon(true, "var(--mute)"), "merge"])
+    ]);
+    return el("div", { class: "tools" }, [search, el("label", {}, [box, " hide tags"]), legend,
+      el("span", { id: "count" })]);
+  }
+
+  function graph(rows) {
+    var index = {};
+    rows.forEach(function (rev, i) { index[rev.rev] = i; });
+    var columns = rows.reduce(function (max, rev) { return Math.max(max, rev.column); }, 0) + 1;
+    var width = PAD * 2 + (columns - 1) * COL, height = Math.max(rows.length, 1) * ROW;
+    var x = function (c) { return PAD + c * COL; }, y = function (i) { return i * ROW + ROW / 2; };
+    var lines = svg("svg", { class: "lines", width: width, height: height });
+
+    D.lanes.forEach(function (lane) {
+      var at = rows.filter(function (r) { return r.lane === lane.id; }).map(function (r) { return index[r.rev]; });
+      if (at.length > 1) lines.appendChild(svg("line", { x1: x(lane.column), x2: x(lane.column),
+        y1: y(Math.min.apply(null, at)), y2: y(Math.max.apply(null, at)), stroke: lane.color, "stroke-width": 2 }));
+    });
+    D.edges.forEach(function (edge) {
+      var t = index[edge.to_rev];
+      if (t === undefined) return;
+      var color = (lanes[edge.from_lane] || lanes[edge.to_lane]).color, dash = edge.kind === "merge" ? "5 4" : "";
+      var tx = x(rows[t].column), ty = y(t);
+      var s = edge.from_rev === null ? undefined : index[edge.from_rev];
+      if (s === undefined) {
+        // The source is older than the shown range, or hidden: a short stub pointing down.
+        lines.appendChild(svg("path", { d: "M" + tx + " " + ty + " l" + (-COL / 2) + " " + (ROW * 0.6),
+          stroke: color, "stroke-width": 2, fill: "none", "stroke-dasharray": "2 3" }));
+        return;
+      }
+      var sx = x(rows[s].column), sy = y(s);
+      lines.appendChild(svg("path", { d: "M" + sx + " " + sy + " C" + sx + " " + (sy - ROW * 0.8) + " " + tx + " " +
+        (ty + ROW * 0.8) + " " + tx + " " + ty, stroke: color, "stroke-width": 2, fill: "none", "stroke-dasharray": dash }));
+    });
+    rows.forEach(function (rev, i) {
+      var lane = lanes[rev.lane], cx = x(rev.column), cy = y(i);
+      lines.appendChild(lane.kind === "tag"
+        ? svg("rect", { x: cx - 4.5, y: cy - 4.5, width: 9, height: 9, transform: "rotate(45 " + cx + " " + cy + ")",
+            fill: lane.color, stroke: "var(--panel)", "stroke-width": 2 })
+        : svg("circle", { cx: cx, cy: cy, r: 5, fill: lane.color, stroke: "var(--panel)", "stroke-width": 2 }));
+    });
+
+    var list = el("div", {}, rows.map(function (rev) {
+      var row = el("div", { class: "row" + (rev.rev === state.selected ? " on" : "") +
+          (matches(rev, state.filter) ? "" : " dim"), style: "padding-left:" + (width + 4) + "px",
+          on: { click: function () { state.selected = rev.rev; draw(); } } }, [
+        el("span", { class: "rev mono", text: "r" + rev.rev }),
+        lanes[rev.lane].kind === "trunk" ? null : lanePill(rev.lane),
+        el("span", { class: "msg", title: rev.message, text: firstLine(rev.message) }),
+        el("span", { class: "who", text: rev.author }),
+        el("span", { class: "date", title: rev.date + " (UTC)", text: local(rev.date) })
+      ]);
+      return row;
+    }));
+    if (!rows.length) list.appendChild(el("div", { class: "empty", text: "No revision to show." }));
+    return el("div", { class: "panel graph" }, [lines, list]);
+  }
+
+  function edgeText(edge, incoming) {
+    var other = incoming ? edge.from_lane : edge.to_lane, label = (lanes[other] || { label: other.replace(/^\//, "") }).label;
+    if (edge.kind === "fork") return incoming
+      ? "Created from " + label + " at r" + edge.source_rev + (edge.outside ? " (older than the shown range)" : "")
+      : "Branched to " + label + " in r" + edge.to_rev;
+    return incoming
+      ? "Merged from " + label + " up to r" + edge.source_rev + (edge.outside ? " (older than the shown range)" : "")
+      : "Merged into " + label + " in r" + edge.to_rev;
+  }
+
+  function details(rev) {
+    if (!rev) return el("aside", { class: "panel details" }, [el("div", { class: "empty", text: "Select a revision." })]);
+    var links = D.edges.filter(function (e) { return e.to_rev === rev.rev; }).map(function (e) { return edgeText(e, true); })
+      .concat(D.edges.filter(function (e) { return e.from_rev === rev.rev; }).map(function (e) { return edgeText(e, false); }));
+    var paths = el("table", {}, [el("tbody", {}, rev.paths.map(function (p) {
+      var flags = [p.kind, p.text_mods ? "text" : "", p.prop_mods ? "props" : ""].filter(Boolean).join(" · ");
+      return el("tr", {}, [
+        el("td", { class: "act " + p.action, title: ACTIONS[p.action] || p.action, text: p.action }),
+        el("td", { class: "mono" }, [p.path, p.copyfrom_path
+          ? el("div", { class: "flag", text: "from " + p.copyfrom_path + "@" + p.copyfrom_rev }) : null]),
+        el("td", { class: "flag", text: flags })
+      ]);
+    }))]);
+    return el("aside", { class: "panel details" }, [
+      el("h2", { class: "mono", text: "r" + rev.rev }),
+      el("div", {}, [lanePill(rev.lane)]),
+      el("dl", {}, [
+        el("dt", { text: "Author" }), el("dd", { text: rev.author || "(none)" }),
+        el("dt", { text: "Date" }), el("dd", { title: rev.date + " (UTC)", text: local(rev.date) + " " + ZONE }),
+        rev.other_lanes.length ? el("dt", { text: "Also touches" }) : null,
+        rev.other_lanes.length ? el("dd", { text: rev.other_lanes.map(function (l) { return l.replace(/^\//, ""); }).join(", ") }) : null
+      ]),
+      el("pre", { text: rev.message || "(no message)" }),
+      links.length ? el("h3", { text: "Branches and merges" }) : null,
+      links.length ? el("ul", { class: "plain" }, links.map(function (t) { return el("li", { text: t }); })) : null,
+      el("h3", { text: "Changed paths (" + rev.paths.length + ")" }),
+      rev.paths.length ? paths : el("div", { class: "empty", text: "No changed path is visible." })
+    ]);
+  }
+
+  function draw() {
+    var rows = D.revisions.filter(function (r) { return !(state.hideTags && lanes[r.lane].kind === "tag"); });
+    if (state.selected === null && rows.length) state.selected = rows[0].rev;
+    var selected = D.revisions.filter(function (r) { return r.rev === state.selected; })[0];
+    var app = document.getElementById("app"), focus = document.activeElement && document.activeElement.type === "search";
+    app.textContent = "";
+    header().forEach(function (node) { app.appendChild(node); });
+    app.appendChild(tools());
+    app.appendChild(el("div", { class: "wrap" }, [graph(rows), details(selected)]));
+    var shown = rows.filter(function (r) { return matches(r, state.filter); }).length;
+    document.getElementById("count").textContent = state.filter ? shown + " match(es)" : "";
+    if (focus) { var input = app.querySelector("input[type=search]"); input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

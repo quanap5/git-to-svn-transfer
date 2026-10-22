@@ -9,6 +9,17 @@ The version is the one in `.claude-plugin/plugin.json`, which is also what
 
 ## [Unreleased]
 
+### Added
+
+- The `visual` skill (`/g2skit:visual`): draws an SVN repository's history as a
+  git-style graph in one self-contained HTML page. Lanes for trunk, branches and
+  tags in the standard layout, the revision each branch or tag was copied from,
+  merges read from `svn:mergeinfo`, and per revision the message, author, date
+  and changed paths, with a filter and a switch to hide tags.
+- `git_to_svn.py graph (--svn-wc <dir> | --url <url>) --out <file.html>
+  [--limit 300]`: builds that page. It runs only `svn info`, `svn log` and
+  `svn propget`, refuses to write inside a working copy, and adds no event.
+
 ## [1.5.0] - 2026-10-21
 
 ### Changed

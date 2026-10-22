@@ -114,6 +114,30 @@ Without an agent, the same answer comes from:
 python3 skills/git-to-svn-transfer/scripts/git_to_svn.py next --run <run-dir>
 ```
 
+### See the SVN history as a graph
+
+SVN has no `git log --graph`. The third skill draws one for any SVN repository:
+
+```text
+/g2skit:visual
+```
+
+It writes one self-contained HTML page: a lane per trunk, branch and tag, a
+curve where a branch or tag was copied from, a dashed line per merge (read from
+`svn:mergeinfo`), and for every revision its message, author, date and changed
+paths. A filter and a "hide tags" switch help in a busy history. It only reads
+SVN.
+
+Without an agent:
+
+```bash
+python3 skills/git-to-svn-transfer/scripts/git_to_svn.py graph --svn-wc <working-copy> --out svn-graph.html
+```
+
+`--url <url>` works instead of `--svn-wc`, and `--limit` sets how many of the
+newest revisions are drawn (300 by default). Branches must follow the standard
+layout (`trunk`, `branches/<name>`, `tags/<name>`); diffs are not shown.
+
 Every command reports its progress step by step on stderr: the stage, the group
 being handled and its status. The lines are coloured on a terminal and plain
 otherwise, and the JSON result on stdout is unchanged.
@@ -200,7 +224,7 @@ python3 skills/git-to-svn-transfer/scripts/git_to_svn.py inspect --repo <repo> -
 ```
 
 The subcommands are `inspect`, `plan`, `prepare`, `verify`, `resume`, `apply`,
-`precommit`, `record`, `cleanup`, `report` and `next`. You write the plan file yourself; its
+`precommit`, `record`, `cleanup`, `report`, `next` and `graph`. You write the plan file yourself; its
 format is in
 [plan-format.md](skills/git-to-svn-transfer/references/plan-format.md).
 
@@ -217,6 +241,8 @@ skills/git-to-svn-transfer/
   assets/                   plan and guide templates
 skills/what-next/
   SKILL.md                  walks the user through the SVN side of a prepared run
+skills/visual/
+  SKILL.md                  draws an SVN repository's history as a graph
 tests/                      test suite; not part of the skill
 assets/                     README banner and its motion-graphic source
 ```
@@ -225,6 +251,7 @@ assets/                     README banner and its motion-graphic source
 
 - [SKILL.md](skills/git-to-svn-transfer/SKILL.md): modes, boundaries and the workflow
 - [what-next/SKILL.md](skills/what-next/SKILL.md): the step-by-step guide for the SVN side
+- [visual/SKILL.md](skills/visual/SKILL.md): the SVN history graph
 - [grouping.md](skills/git-to-svn-transfer/references/grouping.md): choosing groups
 - [checks.md](skills/git-to-svn-transfer/references/checks.md): checks and readiness
 - [plan-format.md](skills/git-to-svn-transfer/references/plan-format.md): the plan file

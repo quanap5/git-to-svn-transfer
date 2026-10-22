@@ -146,6 +146,48 @@ class Svn(object):
                             "copyfrom": node.get("copyfrom-path")})
         return {"author": entry.findtext("author"), "message": entry.findtext("msg") or "", "changes": changes}
 
+    # --- whole-repository history, for the graph
+    #
+    # These take a working copy path (already in the client's form) or a URL, and
+    # run outside any working copy.
+
+    def repository(self, target):
+        """Root URL, uuid and head revision of the repository holding a working copy or URL."""
+        entry = self._xml(["info", target], None).find("entry")
+        if entry is None:
+            raise G2SError("not an SVN working copy or URL: %s" % target)
+        root = entry.find("repository").findtext("root")
+        head = self._xml(["info", "-r", "HEAD", root], None).find("entry")
+        return {"root": root, "uuid": entry.find("repository").findtext("uuid"), "head": int(head.get("revision"))}
+
+    def log(self, url, limit):
+        """The newest 'limit' revisions under a URL, newest first, with their changed paths."""
+        root = self._xml(["log", "-v", "-l", str(int(limit)), url], None)
+        entries = []
+        for entry in root.findall("logentry"):
+            paths = []
+            for node in entry.iter("path"):
+                rev = node.get("copyfrom-rev")
+                paths.append({"path": node.text or "", "action": node.get("action"), "kind": node.get("kind") or "",
+                              "copyfrom_path": node.get("copyfrom-path"), "copyfrom_rev": int(rev) if rev else None,
+                              "text_mods": node.get("text-mods") == "true", "prop_mods": node.get("prop-mods") == "true"})
+            entries.append({"revision": int(entry.get("revision")), "author": entry.findtext("author") or "",
+                            "date": entry.findtext("date") or "", "message": entry.findtext("msg") or "",
+                            "paths": paths})
+        return entries
+
+    def mergeinfo(self, url, revision):
+        """svn:mergeinfo of a URL at a revision; empty when the path or the property did not exist then."""
+        if revision < 1:
+            return ""
+        proc = self.svn(["propget", "svn:mergeinfo", "%s@%d" % (url, int(revision))], None, check=False)
+        if proc.returncode == 0:
+            return proc.stdout.decode("utf-8", "replace")
+        error = proc.stderr.decode("utf-8", "replace")
+        if any(code in error for code in ("W200017", "E200017", "W160013", "E160013", "E170000")):
+            return ""
+        raise G2SError("could not read svn:mergeinfo of %s@%d: %s" % (url, revision, error.strip()))
+
     # --- naming paths to the client
     #
     # A Windows svn client converts its arguments, and the contents of a --targets
