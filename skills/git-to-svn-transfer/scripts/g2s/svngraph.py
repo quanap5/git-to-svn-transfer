@@ -182,6 +182,18 @@ def build(repository, entries, mergeinfo=None, limit=None):
     }
 
 
+def mark_checkout(data, checkout):
+    """Record the working copy in the page data. It sits on the last revision that changed it, which is on
+    its own lane, rather than on the repository-wide revision it was updated to."""
+    changed = checkout["changed"]
+    shown = {rev["rev"] for rev in data["revisions"]}
+    data["checkout"] = {"revision": checkout["revision"], "changed": changed, "path": checkout["path"],
+                        "lane": lane_of(checkout["path"]), "shown": changed in shown}
+    if changed not in shown:
+        data["notes"].append("the working copy (r%d, last changed r%s) is older than the shown range; "
+                             "pass a larger --limit to see it" % (checkout["revision"], changed))
+
+
 def write(path, data):
     with open(os.path.join(ASSETS, TEMPLATE), "r", encoding="utf-8") as handle:
         template = handle.read()
@@ -211,10 +223,13 @@ def graph(svn_wc=None, url=None, out=None, limit=300, svn_bin=None):
         return svn.mergeinfo(repository["root"] + quote(path, safe="/"), revision)
 
     data = build(repository, entries, mergeinfo, limit)
+    if svn_wc:
+        mark_checkout(data, svn.checkout(target))
     progress.item("%d lane(s), %d fork(s), %d merge(s)" % (
         data["counts"]["lanes"], data["counts"]["forks"], data["counts"]["merges"]), "done")
     progress.step("page")
     write(out, data)
     progress.item(out, "done")
     return dict({"html": out, "repository": repository["root"], "head": repository["head"],
-                 "truncated": data["truncated"], "notes": data["notes"]}, **data["counts"])
+                 "checkout": data.get("checkout"), "truncated": data["truncated"], "notes": data["notes"]},
+                **data["counts"])

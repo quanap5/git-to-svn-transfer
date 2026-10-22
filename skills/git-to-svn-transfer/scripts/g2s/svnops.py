@@ -160,6 +160,16 @@ class Svn(object):
         head = self._xml(["info", "-r", "HEAD", root], None).find("entry")
         return {"root": root, "uuid": entry.find("repository").findtext("uuid"), "head": int(head.get("revision"))}
 
+    def checkout(self, wc):
+        """Where a working copy stands: its revision, the last revision that changed it, and its path in the repository."""
+        entry = self._xml(["info", wc], None).find("entry")
+        if entry is None:
+            raise G2SError("not an SVN working copy: %s" % wc)
+        last = entry.find("./commit")
+        return {"revision": int(entry.get("revision")),
+                "changed": int(last.get("revision")) if last is not None else None,
+                "path": (entry.findtext("relative-url") or "").replace("^", "", 1)}
+
     def log(self, url, limit):
         """The newest 'limit' revisions under a URL, newest first, with their changed paths."""
         root = self._xml(["log", "-v", "-l", str(int(limit)), url], None)

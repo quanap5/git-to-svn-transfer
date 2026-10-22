@@ -126,6 +126,12 @@ class BuildTest(unittest.TestCase):
         self.assertTrue(data["truncated"])
         self.assertEqual(len(data["notes"]), 2)
 
+    def test_a_checkout_older_than_the_window_is_noted(self):
+        data = svngraph.build(REPO, [entry(8, path("/trunk/a"))])
+        svngraph.mark_checkout(data, {"revision": 5, "changed": 3, "path": "/trunk"})
+        self.assertFalse(data["checkout"]["shown"])
+        self.assertTrue(any("working copy" in n for n in data["notes"]))
+
     def test_a_repository_without_the_layout_is_one_lane(self):
         data = svngraph.build(REPO, [entry(1, path("/a.txt", "A")), entry(2, path("/docs/b.txt", "A"))])
         self.assertEqual([l["id"] for l in data["lanes"]], ["/"])
@@ -200,10 +206,20 @@ class GraphCommandTest(unittest.TestCase):
             page = handle.read()
         self.assertNotIn("__G2S_DATA__", page)
         data = json.loads(re.search(r'<script type="application/json" id="data">(.*?)</script>', page, re.S).group(1))
+        here = self.client.checkout(self.client.native(self.trunk))
+        self.assertEqual(data["checkout"], {"revision": here["revision"], "changed": here["changed"],
+                                            "path": "/trunk", "lane": "/trunk", "shown": True})
+        self.assertIn(here["changed"], [r["rev"] for r in data["revisions"] if r["lane"] == "/trunk"])
         merge = [e for e in data["edges"] if e["kind"] == "merge"][0]
         self.assertEqual((merge["from_lane"], merge["to_lane"], merge["to_rev"]), ("/branches/feature", "/trunk", head))
         self.assertEqual(self.client.repository(self.url)["head"], head, "graph must not change the repository")
         self.assertEqual(self.sh([SVN_BIN, "status"], self.trunk).strip(), "", "nor the working copy")
+
+    def test_a_url_has_no_checkout_to_mark(self):
+        out = os.path.join(self.tmp, "nourl.html")
+        code, stdout, err = self.cli("graph", "--url", self.url + "/trunk", "--out", out)
+        self.assertEqual(code, 0, err)
+        self.assertIsNone(json.loads(stdout)["checkout"])
 
     def test_the_page_never_goes_inside_the_working_copy(self):
         code, _, err = self.cli("graph", "--svn-wc", self.trunk, "--out", os.path.join(self.trunk, "g.html"))

@@ -52,6 +52,7 @@ td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top
 tr:last-child td { border-bottom: 0; }
 .act { font-weight: 700; width: 1.5em; }
 .A { color: var(--good); } .M { color: var(--accent); } .D { color: var(--bad); } .R { color: var(--merge); }
+.here { flex: none; padding: 0 8px; border-radius: 10px; font-size: 12px; font-weight: 700; background: var(--accent); color: var(--panel); }
 .flag { color: var(--mute); font-size: 12px; white-space: nowrap; }
 .empty { color: var(--mute); padding: 12px; }
 ul.plain { margin: 0; padding-left: 20px; }
@@ -125,6 +126,10 @@ ul.plain { margin: 0; padding-left: 20px; }
         " revision(s), " + shown + " · " + D.counts.lanes + " lane(s), " + D.counts.forks + " fork(s), " +
         D.counts.merges + " merge(s) · times in " + ZONE })
     ];
+    if (D.checkout) nodes.push(el("div", { class: "sub", text: "Working copy: r" + D.checkout.revision +
+      (D.checkout.revision === D.checkout.changed ? "" : " (last changed r" + D.checkout.changed + ")") +
+      " of " + (D.checkout.path || "/") + (D.checkout.revision < D.repository.head
+        ? " · " + (D.repository.head - D.checkout.revision) + " revision(s) behind head" : "") }));
     D.notes.forEach(function (note) { nodes.push(el("div", { class: "note", text: note })); });
     return nodes;
   }
@@ -145,7 +150,8 @@ ul.plain { margin: 0; padding-left: 20px; }
     box.addEventListener("change", function () { state.hideTags = box.checked; draw(); });
     var legend = el("span", { class: "legend" }, [
       el("span", {}, [legendIcon(false, "var(--mute)"), "lane / fork"]),
-      el("span", {}, [legendIcon(true, "var(--mute)"), "merge"])
+      el("span", {}, [legendIcon(true, "var(--mute)"), "merge"]),
+      D.checkout ? el("span", {}, ["◯ working copy"]) : null
     ]);
     return el("div", { class: "tools" }, [search, el("label", {}, [box, " hide tags"]), legend,
       el("span", { id: "count" })]);
@@ -182,6 +188,8 @@ ul.plain { margin: 0; padding-left: 20px; }
     });
     rows.forEach(function (rev, i) {
       var lane = lanes[rev.lane], cx = x(rev.column), cy = y(i);
+      if (D.checkout && rev.rev === D.checkout.changed) lines.appendChild(svg("circle", { cx: cx, cy: cy, r: 9,
+        fill: "none", stroke: "var(--accent)", "stroke-width": 2.5 }));
       lines.appendChild(lane.kind === "tag"
         ? svg("rect", { x: cx - 4.5, y: cy - 4.5, width: 9, height: 9, transform: "rotate(45 " + cx + " " + cy + ")",
             fill: lane.color, stroke: "var(--panel)", "stroke-width": 2 })
@@ -193,6 +201,8 @@ ul.plain { margin: 0; padding-left: 20px; }
           (matches(rev, state.filter) ? "" : " dim"), style: "padding-left:" + (width + 4) + "px",
           on: { click: function () { state.selected = rev.rev; draw(); } } }, [
         el("span", { class: "rev mono", text: "r" + rev.rev }),
+        D.checkout && rev.rev === D.checkout.changed
+          ? el("span", { class: "here", title: "Your working copy is at r" + D.checkout.revision, text: "you are here" }) : null,
         lanes[rev.lane].kind === "trunk" ? null : lanePill(rev.lane),
         el("span", { class: "msg", title: rev.message, text: firstLine(rev.message) }),
         el("span", { class: "who", text: rev.author }),
