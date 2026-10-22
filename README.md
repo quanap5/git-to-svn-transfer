@@ -128,6 +128,12 @@ curve where a branch or tag was copied from, a dashed line per merge (read from
 paths. A filter and a "hide tags" switch help in a busy history. It only reads
 SVN.
 
+![The SVN history page: trunk and a branch as lanes, the branch forking from trunk at r130, and the selected revision's message and changed paths on the right](assets/visual_graph.png)
+
+Click a row to see that revision's full message, author, date and changed paths
+(A added, M modified, D deleted, R replaced, with the source of a copy). The
+page follows the system's light or dark theme.
+
 Without an agent:
 
 ```bash
