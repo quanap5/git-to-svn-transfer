@@ -9,6 +9,22 @@ The version is the one in `.claude-plugin/plugin.json`, which is also what
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-22
+
+### Fixed
+
+- The SVN history graph stays narrow. A branch nobody deleted held its column
+  up to the head revision, so a repository with a few idle branches pushed new
+  ones far to the right. Branches and tags now hold a column only between their
+  first and last revision, as `git log --graph` does; trunk still holds its
+  column to the head.
+- A branch that was deleted and later recreated is no longer reported as closed
+  at the deletion.
+
+### Changed
+
+- The README shows an example of the graph page.
+
 ## [1.6.0] - 2026-10-22
 
 ### Added
@@ -133,7 +149,8 @@ First public release, as a Claude Code plugin that is also its own marketplace.
   Installed as a plugin, it is invoked as
   `/git-to-svn-transfer:git-to-svn-transfer`.
 
-[Unreleased]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/quanap5/git-to-svn-transfer/compare/v1.3.1...v1.4.0
